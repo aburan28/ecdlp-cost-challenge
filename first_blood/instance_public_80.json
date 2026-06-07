@@ -1,0 +1,16 @@
+{
+  "name": "generic-prime-field-ecdlp",
+  "encoding": "affine-weierstrass",
+  "bits": 80,
+  "seed": 1,
+  "p": 1175497345426422717181999,
+  "a": 620247556179443582645353,
+  "b": 102263172566403403989251,
+  "n": 1175497345426922808444299,
+  "Gx": 431501422402526006168944,
+  "Gy": 165713249792560672976557,
+  "Qx": 581398211330274887184268,
+  "Qy": 207849787939911311087460,
+  "j_invariant": 384111327721073532865921,
+  "note": "Research-track instance. k is unknown (discarded at generation). Recover k from these params by ANY method; verify via k*G == Q. Not scored on the oracle counter (not a generic-group computation)."
+}

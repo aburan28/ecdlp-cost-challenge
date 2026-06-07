@@ -1,0 +1,12 @@
+/target
+# The sealed secret instance (contains k). Never committed; regenerated per run
+# from $ECDLP_SEED. Only instance.public.json (no k) is safe to publish.
+instance.secret.json
+*.tmp
+# Sage preparsed artifacts and stray research-track outputs at the repo root
+# (the curated first_blood/instance_public_*.json ARE committed).
+*.sage.py
+/instance_public_*.json
+# macOS junk (the volume writes AppleDouble forks).
+._*
+.DS_Store

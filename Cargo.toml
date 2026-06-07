@@ -1,0 +1,34 @@
+[package]
+name = "ecdlp-challenge"
+version = "0.1.0"
+edition = "2021"
+description = "The Generic Prime-Field ECDLP Cost Challenge — beat Pollard rho's group-operation count in an executable generic-group oracle."
+license = "MIT OR Apache-2.0"
+
+# No external dependencies, on purpose:
+#   * the benchmark runs fully offline (CARGO_NET_OFFLINE=true);
+#   * the trusted oracle has a small, auditable surface;
+#   * the contestant cannot smuggle behaviour through a transitive dep.
+# Everything (field, curve, point counting, PRNG, hashing, JSON emit) is std-only.
+
+[lib]
+name = "ecdlp_challenge"
+path = "src/lib.rs"
+
+[[bin]]
+name = "oracle"        # TRUSTED parent: derives the instance, serves the oracle, scores.
+path = "src/bin/oracle.rs"
+
+[[bin]]
+name = "solver"        # UNTRUSTED child: thin glue around src/solver (the editable part).
+path = "src/bin/solver.rs"
+
+[[bin]]
+name = "gen_instance"  # TRUSTED: print the public instance descriptor for a seed.
+path = "src/bin/gen_instance.rs"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"

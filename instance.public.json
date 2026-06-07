@@ -1,0 +1,15 @@
+{
+  "name": "generic-prime-field-ecdlp",
+  "encoding": "affine-weierstrass",
+  "bits": 40,
+  "seed": 305419896,
+  "p": 616883774851,
+  "a": 24569641080,
+  "b": 109798974509,
+  "n": 616882790773,
+  "Gx": 361041461400,
+  "Gy": 318582693153,
+  "Qx": 419459771563,
+  "Qy": 32418165735,
+  "note": "y^2 = x^3 + a*x + b over F_p; n is the prime group order; Q = k*G with k secret. Coordinates are published only for the unscored representation-attack research track; the scored arena hides them."
+}

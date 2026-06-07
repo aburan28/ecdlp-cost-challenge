@@ -1,0 +1,2 @@
+timestamp	commit	group_ops	bits	rho_ref	ratio	correct	note
+1780792087	-	862402	40	984377	0.8761	OK	baseline parallel-DP rho (sample bits=40, 5-trial mean)

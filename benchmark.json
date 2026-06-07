@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "name": "ecdlp-cost-challenge",
+  "description": "Recover an ECDLP discrete log on a generic prime-field elliptic curve using as few counted group operations as possible, inside an executable generic-group oracle. Lower is better.",
+  "category": "rust",
+  "direction": "-",
+  "editablePaths": ["src/solver"],
+  "setupCommand": ["bash", "-lc", "./setup.sh"],
+  "benchmarkCommand": ["bash", "-lc", "./benchmark.sh"],
+  "scorePath": "score.json"
+}
