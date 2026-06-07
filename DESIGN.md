@@ -4,9 +4,10 @@ This note explains *why* the challenge is built as an opaque generic-group
 oracle, and what its score does and does not mean. It uses the lab's claim
 labels.
 
-## 1. The problem ecdsa.fail solves, and why ECDLP is different
+## 1. The artifact-cost benchmark pattern, and why ECDLP is different
 
-`OBSERVATION.` ecdsa.fail scores a **resource intrinsic to a submitted artifact**.
+`OBSERVATION.` An artifact-cost benchmark scores a **resource intrinsic to a
+submitted artifact** (e.g., the Toffoli count of a submitted reversible circuit).
 The contestant submits a reversible circuit (an op stream); a trusted stage
 re-simulates it, counts Toffolis, and checks it computes point-addition on hidden
 test points. The contestant controls the *artifact* but not the *scoring
@@ -81,7 +82,8 @@ Defenses:
 `HYPOTHESIS (residual).` The remaining trust assumption is the OS sandbox
 (`sandbox-exec` on macOS, `bubblewrap` on Linux) plus process isolation. A kernel
 sandbox escape, or a side channel reading the oracle process's memory, would
-break the meter. This matches ecdsa.fail's own reliance on the sandbox. `Next
+break the meter. This matches any sandboxed-submission benchmark's reliance on
+the sandbox. `Next
 action:` for a hardened deployment, run oracle and solver in separate containers
 / VMs rather than parent–child processes on one host.
 

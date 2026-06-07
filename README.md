@@ -35,9 +35,9 @@ This challenge turns that argument into a measurable game. It asks, precisely:
   *representation* — see [Scope & honesty](#scope--honesty-read-this) and the
   [First-Blood board](first_blood/README.md).
 
-It is the ECDLP analogue of [ecdsa.fail](https://ecdsa.fail): a fixed, precisely
-specified cryptographic task, scored by a resource the harness counts for you,
-with no loopholes.
+It follows the **resource-cost benchmark** pattern: a fixed, precisely specified
+cryptographic task, scored by a resource the harness counts for you, with no
+loopholes.
 
 ---
 
@@ -85,8 +85,8 @@ the meter, because:
   final `k`; the oracle owns the number.
 - **You cannot pre-seed or replay.** The token encoding is freshly randomized
   every run, so a table built in a previous run is meaningless this run. (This is
-  the analogue of ecdsa.fail deriving its test points by Fiat–Shamir from your
-  submission.)
+  the Fiat–Shamir trick: the per-run randomness is derived freshly, so a solver
+  cannot precompute against it.)
 - **You cannot read the answer off disk.** `benchmark.sh` wipes
   `instance.public.json` before the run, the solver's environment is cleared (no
   `$ECDLP_SEED`), and the sandbox denies network and all filesystem writes. The
@@ -94,8 +94,8 @@ the meter, because:
 - **Official runs use a fresh secret seed.** The instance committed in this repo
   is a *sample* for offline study. The scored instance's seed is chosen
   server-side and never revealed, so hardcoding `k` (or the curve) into your
-  solver fails on the official run — exactly as a circuit tuned to ecdsa.fail's
-  public test set fails on the hidden one.
+  solver fails on the official run — exactly as a solver tuned to a public test
+  set fails on the hidden one.
 
 A "win" that comes from skipping group operations you actually performed, or from
 reading the secret, doesn't make the run faster — it makes it invalid.
