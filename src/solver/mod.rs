@@ -2,37 +2,49 @@
 //!  THIS IS THE ONLY FILE YOU EDIT.   (editablePaths = ["src/solver"])
 //! ============================================================================
 //!
-//! NEGATION-MAP parallel distinguished-point rho. Beats the plain parallel-DP
-//! baseline (kept at solutions/baseline_parallel_dp.rs) by the standard √2 factor.
+//! NEGATION-MAP parallel distinguished-point rho, tuned for **minimum counted
+//! group operations** — the score is the TOTAL op count over a single-threaded
+//! run, so this solver optimizes ops, not wall-clock.
 //!
-//! Idea: negation is FREE here (−P = (x,−y)), so we walk on the n/2 equivalence
-//! classes {P, −P} instead of on n points. Each class is named by its canonical
-//! token = min(tok(X), tok(−X)); the coefficients carry a sign so the stored
-//! (a,b) always describe the canonical point. Halving the search space gives √2
-//! fewer steps, and since the canonicalizing `neg` is free, the per-step cost is
-//! unchanged — a genuine √2 win.
+//! Three op-count levers over the shipped baseline (W=512, R=256 built with
+//! 2R scalar_muls), each a legitimate algorithmic change inside the oracle:
 //!
-//! Cost: each batched step = `add_batch` (+W counted ops, 1 round trip) +
-//! `neg_batch` (free, 1 round trip). The negation map's hazard — short "fruitless
-//! cycles" X→…→X that produce no distinguished point — is handled by detecting a
-//! revisit within a small per-walk history and escaping with a deterministic
-//! doubling (Bos–Kleinjung–Bos style). The escape is deterministic, so crossed
-//! trails stay merged and collision detection is unaffected.
+//!  1. CHEAP JUMP TABLE.  The r-adding jump set J_r = u_r·P + v_r·Q is built from
+//!     ONE base (a·P + b·Q, two scalar_muls) followed by R−1 single adds that
+//!     alternately fold in P or Q. Each J_r is still a distinct pseudo-random
+//!     group element with exactly-tracked (u_r, v_r), but the table now costs
+//!     ≈ R adds instead of ≈ 2R·bits ops. At bits=40 that turns ~31k of pure
+//!     setup into ~1k — a deterministic saving straight off the mean.
+//!
+//!  2. SMALL WALK COUNT W.  With a single-threaded meter there is no speed reason
+//!     to run 512 walks; a large W only inflates the distinguished-point "drain
+//!     tail" (≈ W·gap ops between a collision and its detection). We use a small W
+//!     — just enough to batch round-trips so wall-clock stays sane — which makes
+//!     the tail negligible. (Op count is identical whether the W adds happen in
+//!     one batched round trip or W separate ones; batching is purely for speed.)
+//!
+//!  3. LARGE R (now affordable).  Because the table is cheap, we use a large
+//!     partition count R: better Teske r-adding mixing and fewer negation-map
+//!     fruitless cycles (rate ≈ 1/2R).
+//!
+//! NEGATION-MAP FRUITLESS CYCLES.  Walking the n/2 classes {±X} introduces short
+//! cycles X→…→X that make no progress. We catch them two ways, both robust:
+//!   * A DP-free cycle (no distinguished point inside) is caught by a per-walk set
+//!     of points seen since its last DP: any revisit ⇒ a cycle with no DP ⇒ escape
+//!     by a deterministic doubling (which preserves the (a,b) relation).
+//!   * A cycle that does contain a DP shows up as a useless collision (db=0, the
+//!     walk rejoined a stored DP with identical coefficients) ⇒ restart that walk.
+//! Together these guarantee progress for any cycle length.
 //!
 //! Reference points (lower is better, scored as the MEAN over trials):
-//!     this solver (negation-map DP rho):  ≈ 0.85–0.95 × rho_ref
-//!     plain parallel-DP rho (baseline):   ≈ 1.2–1.5 × rho_ref
+//!     negation-map rho optimum:           √(πn/4) ≈ 0.71× rho_ref   (target)
+//!     generic floor with free negation:   √(n/2)  ≈ 0.56× rho_ref   (expected)
 //!     Pollard-rho optimum (no neg map):   √(πn/2)  = 1.00× rho_ref
-//!     negation-map rho optimum:           √(πn/4) ≈ 0.71× rho_ref
-//!     generic floor with free negation:   √(n/2)  ≈ 0.56× rho_ref  (expected, not per-run)
 
 use crate::client::{Client, Tok};
 use crate::field;
 use crate::rng::{fnv1a, SplitMix64};
-use std::collections::HashMap;
-
-const R: usize = 256; // r-adding-walk partitions
-const H: usize = 8; // per-walk cycle-detection history depth
+use std::collections::{HashMap, HashSet};
 
 #[inline]
 fn is_dp(tok: &Tok, dp_bits: u32) -> bool {
@@ -60,25 +72,45 @@ pub fn solve(c: &mut Client) -> u128 {
     let q = c.tok_q;
     let mut rng = SplitMix64::new(0x00C0_FFEE_u64 ^ n ^ 0x4E45_47); // "NEG"
 
-    let logw: u32 = (bits / 2).saturating_sub(4).clamp(2, 9);
-    let w: usize = 1usize << logw;
-    let dp_bits: u32 = ((bits / 2) as i64 - logw as i64 - 2).clamp(1, 28) as u32;
+    // --- parameters (see module header) -------------------------------------
+    let w_bits: u32 = ((bits / 8) + 1).clamp(3, 7); // small W: only batches round-trips
+    let w: usize = 1usize << w_bits;
+    let r_bits: u32 = (bits / 4).clamp(8, 11); // large R: good mixing, few fruitless cycles
+    let r_parts: usize = 1usize << r_bits;
+    let r_mask: u64 = (r_parts as u64) - 1;
+    // θ = 2^-dp_bits, ~2^7 DPs per walk; small enough that the drain tail (≈ W·2^dp_bits)
+    // stays well under √(πn/4).
+    let dp_bits: u32 = ((bits / 2) as i64 - w_bits as i64 - 7).clamp(3, 30) as u32;
 
-    // Jump table J_r = u_r·P + v_r·Q with known coefficients.
-    let mut ju = [0u64; R];
-    let mut jv = [0u64; R];
-    let mut jtok: Vec<Tok> = Vec::with_capacity(R);
-    for r in 0..R {
-        let u = 1 + rng.below(n - 1);
-        let v = 1 + rng.below(n - 1);
-        let up = c.scalar_mul(&p, u as u128);
-        let vq = c.scalar_mul(&q, v as u128);
-        jtok.push(c.add(&up, &vq));
-        ju[r] = u;
-        jv[r] = v;
+    // --- cheap jump table:  J_r = u_r·P + v_r·Q ------------------------------
+    let mut ju = vec![0u64; r_parts];
+    let mut jv = vec![0u64; r_parts];
+    let mut jtok: Vec<Tok> = Vec::with_capacity(r_parts);
+    {
+        let a0 = 1 + rng.below(n - 1);
+        let b0 = 1 + rng.below(n - 1);
+        let ap = c.scalar_mul(&p, a0 as u128);
+        let bq = c.scalar_mul(&q, b0 as u128);
+        let mut acc = c.add(&ap, &bq); // +1 op
+        let (mut cu, mut cv) = (a0, b0);
+        jtok.push(acc);
+        ju[0] = cu;
+        jv[0] = cv;
+        for r in 1..r_parts {
+            if r & 1 == 0 {
+                acc = c.add(&acc, &p); // +1 op; fold in P
+                cu = field::add(cu, 1, n);
+            } else {
+                acc = c.add(&acc, &q); // +1 op; fold in Q
+                cv = field::add(cv, 1, n);
+            }
+            jtok.push(acc);
+            ju[r] = cu;
+            jv[r] = cv;
+        }
     }
 
-    // Cheap spawn-trail raw starts, then canonicalize them all in one neg_batch.
+    // --- spawn W independent walks, canonicalize all at once -----------------
     let mut raw: Vec<Tok> = Vec::with_capacity(w);
     let mut ra: Vec<u64> = Vec::with_capacity(w);
     let mut rb: Vec<u64> = Vec::with_capacity(w);
@@ -91,22 +123,22 @@ pub fn solve(c: &mut Client) -> u128 {
         ra.push(a0);
         rb.push(b0);
         for i in 1..w {
-            let r = i % R;
-            let prev_tok = raw[i - 1];
-            raw.push(c.add(&prev_tok, &jtok[r]));
+            let r = i % r_parts;
+            let prev = raw[i - 1];
+            raw.push(c.add(&prev, &jtok[r])); // +1 op
             ra.push(field::add(ra[i - 1], ju[r], n));
             rb.push(field::add(rb[i - 1], jv[r], n));
         }
     }
-    let negs = c.neg_batch(&raw);
+    let negs = c.neg_batch(&raw); // free
     let mut cur: Vec<Tok> = Vec::with_capacity(w);
     let mut av: Vec<u64> = Vec::with_capacity(w);
     let mut bv: Vec<u64> = Vec::with_capacity(w);
-    let mut hist: Vec<[Tok; H]> = vec![[[0u8; 16]; H]; w];
-    let mut hpos: Vec<usize> = vec![0; w];
+    let mut seg: Vec<HashSet<Tok>> = (0..w).map(|_| HashSet::new()).collect();
     for i in 0..w {
         let (rep, flip) = canon(&raw[i], &negs[i]);
         cur.push(rep);
+        seg[i].insert(rep);
         if flip {
             av.push(field::neg(ra[i], n));
             bv.push(field::neg(rb[i], n));
@@ -116,6 +148,7 @@ pub fn solve(c: &mut Client) -> u128 {
         }
     }
 
+    // --- parallel distinguished-point rho on the n/2 classes {±X} ------------
     let mut seen: HashMap<Tok, (u64, u64)> = HashMap::new();
     let mut pairs: Vec<(Tok, Tok)> = Vec::with_capacity(w);
     let mut rs: Vec<usize> = Vec::with_capacity(w);
@@ -123,11 +156,11 @@ pub fn solve(c: &mut Client) -> u128 {
         pairs.clear();
         rs.clear();
         for i in 0..w {
-            let r = (fnv1a(&cur[i]) % R as u64) as usize;
+            let r = (fnv1a(&cur[i]) & r_mask) as usize;
             pairs.push((cur[i], jtok[r]));
             rs.push(r);
         }
-        let raw_new = c.add_batch(&pairs); // +W counted ops
+        let raw_new = c.add_batch(&pairs); // +W counted ops, one round trip
         let neg_new = c.neg_batch(&raw_new); // free
 
         for i in 0..w {
@@ -141,11 +174,12 @@ pub fn solve(c: &mut Client) -> u128 {
                 nb = field::neg(nb, n);
             }
 
-            // Fruitless-cycle escape: a revisit within the recent history means
-            // the walk is looping. Break it with a deterministic doubling of the
-            // point we stepped from.
-            if hist[i].contains(&rep) {
-                let esc = c.add(&ccur, &ccur); // +1 op (rare)
+            // DP-free fruitless-cycle escape: revisiting a point before reaching a
+            // distinguished point means the walk is looping in a cycle that holds
+            // no DP. Break it deterministically by doubling the point we stepped
+            // from (preserves the (a,b) relation, so stored trails stay valid).
+            if seg[i].contains(&rep) {
+                let esc = c.add(&ccur, &ccur); // +1 op (rare with large R)
                 let escneg = c.neg(&esc); // free
                 let (rep2, flip2) = canon(&esc, &escneg);
                 na = field::add(ca, ca, n);
@@ -155,25 +189,40 @@ pub fn solve(c: &mut Client) -> u128 {
                     nb = field::neg(nb, n);
                 }
                 rep = rep2;
+                seg[i].clear();
             }
 
-            hist[i][hpos[i]] = rep;
-            hpos[i] = (hpos[i] + 1) % H;
             cur[i] = rep;
             av[i] = na;
             bv[i] = nb;
 
             if is_dp(&rep, dp_bits) {
+                seg[i].clear(); // segment boundary: start a fresh no-DP window
                 let (a1, b1) = (na, nb);
                 if let Some(&(a2, b2)) = seen.get(&rep) {
                     let db = field::sub(b2, b1, n);
                     if db != 0 {
                         let da = field::sub(a1, a2, n);
                         return field::mul(da, field::inv(db, n), n) as u128;
+                    } else {
+                        // Useless collision (DP-containing fruitless cycle):
+                        // restart this walk from a fresh random point.
+                        let fa = 1 + rng.below(n - 1);
+                        let fb = 1 + rng.below(n - 1);
+                        let fp = c.scalar_mul(&p, fa as u128);
+                        let fq = c.scalar_mul(&q, fb as u128);
+                        let fresh = c.add(&fp, &fq);
+                        let fresh_neg = c.neg(&fresh);
+                        let (frep, fflip) = canon(&fresh, &fresh_neg);
+                        cur[i] = frep;
+                        av[i] = if fflip { field::neg(fa, n) } else { fa };
+                        bv[i] = if fflip { field::neg(fb, n) } else { fb };
                     }
                 } else {
                     seen.insert(rep, (a1, b1));
                 }
+            } else {
+                seg[i].insert(rep);
             }
         }
     }
