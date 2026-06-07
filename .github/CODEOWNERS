@@ -1,0 +1,6 @@
+# Defence in depth for the trusted harness. With "Require review from Code Owners"
+# enabled in branch protection, every path needs maintainer review...
+*           @aburan28
+
+# ...except the contestant-editable solver, so submissions flow without review.
+/src/solver/

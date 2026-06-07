@@ -1,0 +1,129 @@
+name: validate
+
+# Validate submissions (and harness changes) to the ECDLP Cost Challenge.
+#
+# Security model:
+#   * For `pull_request`, GitHub runs the workflow AS DEFINED IN THE PR — so a PR
+#     *can* weaken these checks by editing this file. The real enforcement is
+#     BRANCH PROTECTION: mark `build`, `editable-paths guard`, and `correctness`
+#     as REQUIRED status checks on `main`. A PR that removes/renames a job then
+#     leaves a required check missing -> merge is blocked. Add a CODEOWNERS rule
+#     requiring maintainer review for `.github/` and `src/` (everything but
+#     `src/solver/`) as defence in depth. See CONTRIBUTING.md.
+#   * fork PRs get a read-only GITHUB_TOKEN and no secrets, and for new
+#     contributors require maintainer approval before any workflow runs.
+#   * NEVER switch this to `pull_request_target` (that would expose secrets to
+#     untrusted code).
+#   * The untrusted solver only runs in `validate`, gated behind the guard, so
+#     contestant code executes only after the diff is confirmed src/solver-only.
+
+on:
+  pull_request:
+    # `labeled`/`unlabeled` so adding the `harness` label re-runs the guard.
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: validate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # rustup is preinstalled on the runner; the repo's rust-toolchain file pins
+      # the exact channel, so cargo fetches it automatically.
+      - name: build (trusted harness + solver)
+        run: cargo build --release --locked
+
+  guard:
+    name: editable-paths guard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: enforce src/solver-only for submissions
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+        run: |
+          set -euo pipefail
+          echo "labels: [${LABELS}]"
+          mapfile -t changed < <(git diff --name-only "${BASE_SHA}" "${HEAD_SHA}")
+          echo "changed files:"; printf '  %s\n' "${changed[@]:-<none>}"
+          violations=()
+          for f in "${changed[@]:-}"; do
+            [ -z "$f" ] && continue
+            case "$f" in
+              src/solver/*) : ;;     # the only contestant-editable path
+              submissions/*) : ;;    # optional: submission notes
+              *) violations+=("$f") ;;
+            esac
+          done
+          if [ "${#violations[@]}" -gt 0 ]; then
+            if printf ',%s,' "${LABELS}" | grep -q ',harness,'; then
+              echo "::warning::PR changes files outside src/solver/, but is labelled 'harness' (maintainer change) — allowed."
+              printf '  (allowed) %s\n' "${violations[@]}"
+            else
+              echo "::error::A submission may only modify src/solver/. The trusted meter/oracle/verifier must stay immutable. Offending files:"
+              printf '  %s\n' "${violations[@]}"
+              echo "If this is an intentional harness/infra change, a maintainer should add the 'harness' label."
+              exit 1
+            fi
+          else
+            echo "OK: only src/solver/ (and/or submissions/) changed."
+          fi
+
+  validate:
+    name: correctness (sandboxed harness)
+    runs-on: ubuntu-latest
+    needs: [build, guard]
+    steps:
+      - uses: actions/checkout@v4
+      - name: install bubblewrap
+        run: sudo apt-get update && sudo apt-get install -y bubblewrap
+      - name: allow unprivileged user namespaces (best effort)
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+      - name: setup
+        run: ./setup.sh
+      - name: run benchmark (small tier — correctness gate)
+        env:
+          ECDLP_BITS: "28"
+          ECDLP_TRIALS: "3"
+        run: timeout 600 ./benchmark.sh --note "ci ${{ github.sha }}"
+      - name: assert the harness re-derived a valid score
+        run: |
+          set -euo pipefail
+          test -f score.json || { echo "no score.json produced"; exit 1; }
+          python3 - <<'PY'
+          import json, sys
+          d = json.load(open("score.json"))
+          m = d.get("metrics", {})
+          ok = (m.get("correct") is True) and (d.get("score") is not None)
+          print("score:", d.get("score"), "| correct:", m.get("correct"),
+                "| ratio_to_rho:", m.get("ratio_to_rho"))
+          if not ok:
+              print("FAIL: solver did not recover a valid k (k*P != Q).")
+              sys.exit(1)
+          print("PASS: solver recovered a valid discrete log.")
+          PY
+      - name: publish score to job summary
+        if: always()
+        run: |
+          {
+            echo "### ECDLP benchmark — CI smoke (bits=28, 3 trials)"
+            echo '```json'
+            cat score.json 2>/dev/null || echo "(no score.json)"
+            echo '```'
+            echo "_Score is a small-tier correctness gate, not the official ranking._"
+          } >> "$GITHUB_STEP_SUMMARY"
