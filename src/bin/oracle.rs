@@ -94,7 +94,9 @@ fn main() {
 
     let n = inst.n;
     let rho_ref = (1.2533141373155003_f64 * (n as f64).sqrt()).round() as u64;
-    let shoup_floor = (n as f64).sqrt().floor() as u64;
+    // Negation is free ⇒ you search the n/2 classes {±P}; the floor on the
+    // *expected* score is √(n/2) ≈ 0.707·√n (not √n).
+    let shoup_floor = ((n as f64) / 2.0).sqrt().floor() as u64;
 
     let solver_bin =
         env::var("ECDLP_SOLVER_BIN").unwrap_or_else(|_| "target/release/solver".to_string());
@@ -202,7 +204,7 @@ fn main() {
     // Console summary.
     if correct {
         eprintln!(
-            "[oracle] SOLVED  n=2^{bits}  mean_group_ops={count} (over {trials} trial(s))  rho_ref={rho_ref}  ratio={ratio:.3}×rho  (E[floor] √n={shoup_floor})"
+            "[oracle] SOLVED  n=2^{bits}  mean_group_ops={count} (over {trials} trial(s))  rho_ref={rho_ref}  ratio={ratio:.3}×rho  (E[floor] √(n/2)={shoup_floor})"
         );
     } else {
         eprintln!("[oracle] FAILED  (solver did not return a valid k)  group_ops={count}");

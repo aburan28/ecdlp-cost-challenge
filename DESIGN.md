@@ -54,8 +54,16 @@ oracle. The score is the number of oracle group operations.
 outputs `k` with constant success probability makes `Ω(√n)` group-operation
 queries. Pollard rho achieves `√(πn/2)(1+o(1))`. Hence in this arena the *expected*
 score is floored at `Θ(√n)` and the open quantity is the *constant*. (Single runs
-fluctuate around the mean and can fall below `√n`; the bound is on probability, so
-the harness scores the **mean over trials**.)
+fluctuate around the mean and can fall below the floor; the bound is on
+probability, so the harness scores the **mean over trials**.)
+
+`REFINEMENT (free negation).` The oracle makes `neg` free, because `−P = (x,−y)`
+is the one involution an elliptic-curve representation hands you for nothing —
+and counting it would cancel the standard √2 negation-map speedup. With a free
+involution you search the `n/2` classes `{±P}`, so the expected floor drops to
+`√(n/2) ≈ 0.707·√n` and negation-map rho reaches `√(πn/4) ≈ 0.886·√n`. The shipped
+solver demonstrates this: it beats the plain-DP baseline by the textbook √2. This
+is still `Θ(√n)`; the constant just improves by a fixed factor.
 
 `Assumptions / model boundary.` The bound is about *generic* (representation-blind)
 algorithms. It says nothing about algorithms that exploit the actual `F_p`
@@ -95,9 +103,10 @@ action:` for a hardened deployment, run oracle and solver in separate containers
   run can land anywhere from ~0.5× to ~2× its mean — including *below* `√n`. That
   does **not** contradict Shoup, whose `Ω(√n)` is a bound on success probability /
   expectation, not a per-run minimum. The mean is the leaderboard quantity.
-- A *mean* near `1.0–1.5 × rho_ref` is the band for good rho/distinguished-point
-  variants; `1.00×` denotes the rho optimum `√(πn/2)`. The `√n` floor binds the
-  expectation, not any individual trial.
+- `1.00×` denotes the basic rho optimum `√(πn/2)`. Plain distinguished-point rho
+  lands ≈`1.2–1.4×` (DP slack + setup); the negation map pulls that down by √2 to
+  ≈`0.80×`, toward the `0.71×` negation optimum. The `√(n/2)` floor (≈`0.56×`)
+  binds the expectation, not any individual trial.
 - `OPEN.` The best achievable constant in this executable model (with the negation
   map, optimal walks, distinguished points, Gaudry–Schost) is a clean, finite
   question this benchmark measures directly.
