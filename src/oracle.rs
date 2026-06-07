@@ -19,11 +19,20 @@
 //!     n:u64  bits:u32  tok_P:[16]  tok_Q:[16]  tok_O:[16]
 //! Then request/response, one opcode byte + payload:
 //!     0x01 ADD       tokA[16] tokB[16]                 -> tok[16]      (+1 op)
-//!     0x02 NEG       tok[16]                           -> tok[16]      (+1 op)
+//!     0x02 NEG       tok[16]                           -> tok[16]      (FREE)
 //!     0x03 SMUL      tok[16] scalar:u128[16]           -> tok[16]      (+#dbl+#add)
 //!     0x04 ISID      tok[16]                           -> u8           (free)
 //!     0x05 SUBMIT    k:u128[16]                        -> u8 + count:u64 (terminal)
 //!     0x06 ADDBATCH  count:u32 then count*(tokA[16] tokB[16]) -> count*tok[16]  (+count ops)
+//!     0x07 NEGBATCH  count:u32 then count*tok[16]      -> count*tok[16] (FREE)
+//!
+//! NEGATION IS FREE. On an elliptic curve −P = (x, −y), so negation is the one
+//! involution the representation hands you for nothing. Counting it would cancel
+//! the standard √2 negation-map speedup, so we model it as free — exactly as
+//! optimized EC rho does. The consequence: the generic floor on the *expected*
+//! score drops from √n to √(n/2) (you search n/2 classes {±P}); the rho reference
+//! stays √(πn/2) (basic rho, no negation map), and the negation map targets
+//! √(πn/4) ≈ 0.886·√n.
 
 use crate::curve::Point;
 use crate::instance::Instance;
@@ -162,9 +171,9 @@ impl Oracle {
                     w.write_all(&self.mint(res))?;
                 }
                 0x02 => {
+                    // Negation is FREE (−P = (x, −y)); see the module header.
                     r.read_exact(&mut a)?;
                     let res = self.inst.curve.neg(&self.resolve(&a));
-                    self.count += 1;
                     w.write_all(&self.mint(res))?;
                 }
                 0x03 => {
@@ -205,6 +214,20 @@ impl Oracle {
                         r.read_exact(&mut b)?;
                         let res = self.inst.curve.add(&self.resolve(&a), &self.resolve(&b));
                         self.count += 1;
+                        out.extend_from_slice(&self.mint(res));
+                    }
+                    w.write_all(&out)?;
+                }
+                0x07 => {
+                    // Batched negation, FREE — lets the negation-map solver
+                    // canonicalize all its parallel walks in one round trip.
+                    let mut cb = [0u8; 4];
+                    r.read_exact(&mut cb)?;
+                    let count = u32::from_le_bytes(cb) as usize;
+                    let mut out = Vec::with_capacity(count * 16);
+                    for _ in 0..count {
+                        r.read_exact(&mut a)?;
+                        let res = self.inst.curve.neg(&self.resolve(&a));
                         out.extend_from_slice(&self.mint(res));
                     }
                     w.write_all(&out)?;

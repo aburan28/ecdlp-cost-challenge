@@ -85,7 +85,7 @@ impl Client {
             .collect()
     }
 
-    /// Negation. One counted group operation.
+    /// Negation. FREE (−P = (x, −y) on the curve).
     pub fn neg(&mut self, a: &Tok) -> Tok {
         let mut msg = [0u8; 17];
         msg[0] = 0x02;
@@ -93,6 +93,29 @@ impl Client {
         self.writer.write_all(&msg).unwrap();
         self.writer.flush().unwrap();
         self.read_tok()
+    }
+
+    /// Batched negation, FREE: one round trip for many points. The negation-map
+    /// solver uses this to canonicalize all its parallel walks at once.
+    pub fn neg_batch(&mut self, toks: &[Tok]) -> Vec<Tok> {
+        let count = toks.len() as u32;
+        let mut msg = Vec::with_capacity(5 + toks.len() * 16);
+        msg.push(0x07);
+        msg.extend_from_slice(&count.to_le_bytes());
+        for t in toks {
+            msg.extend_from_slice(t);
+        }
+        self.writer.write_all(&msg).unwrap();
+        self.writer.flush().unwrap();
+        let mut buf = vec![0u8; toks.len() * 16];
+        self.reader.read_exact(&mut buf).expect("read neg_batch");
+        buf.chunks_exact(16)
+            .map(|c| {
+                let mut t = [0u8; 16];
+                t.copy_from_slice(c);
+                t
+            })
+            .collect()
     }
 
     /// Scalar multiplication c·X. Charged the doublings+additions of double-and-add.

@@ -26,13 +26,14 @@ This challenge turns that argument into a measurable game. It asks, precisely:
 
 - **How close to the rho optimum can a real implementation get?** (constant-factor
   arena: the negation map, distinguished points, Gaudry–Schost, BSGS trade-offs).
-- **Can anything beat `√n` here?** Not in *expectation*: the arena is the generic
-  group model made executable, and Shoup's bound forbids any generic algorithm
-  from succeeding with good probability in `o(√n)` queries. (A *single* run can
-  land below `√n` by luck — rho's collision time has heavy variance — which is
-  exactly why the official score is the **mean over several trials**.) Beating the
-  expected `√n` would require leaving the generic model, which needs the
-  *representation* — see [Scope & honesty](#scope--honesty-read-this) and the
+- **How low can the expected score go?** The arena is the generic group model made
+  executable. With negation free you search the `n/2` classes `{±P}`, so the floor
+  on the *expected* score is `√(n/2)` (Shoup); the negation-map walk gets within a
+  small constant of it. A *single* run can land below the floor by luck — rho's
+  collision time has heavy variance — which is why the official score is the
+  **mean over several trials**. Going below `√(n/2)` *in expectation* would require
+  leaving the generic model, which needs the *representation* — see
+  [Scope & honesty](#scope--honesty-read-this) and the
   [First-Blood board](first_blood/README.md).
 
 It follows the **resource-cost benchmark** pattern: a fixed, precisely specified
@@ -57,7 +58,8 @@ You are given a Rust harness with two halves separated by a process boundary:
 ```
 c.add(a, b)        -> token of (a + b)      [ +1 group op ]
 c.add_batch(&ps)   -> token per (a + b)     [ +1 op per pair; ONE round trip ]
-c.neg(a)           -> token of (-a)         [ +1 group op ]
+c.neg(a)           -> token of (-a)         [ FREE  (-P = (x,-y)) ]
+c.neg_batch(&ts)   -> token per (-t)        [ FREE; ONE round trip ]
 c.scalar_mul(a, m) -> token of (m·a)        [ +#doublings+#additions for m ]
 c.is_identity(a)   -> bool                  [ free ]
 a == b             point equality (token compare)   [ free ]
@@ -66,6 +68,9 @@ c.n, c.bits, c.tok_p, c.tok_q, c.tok_o      public instance data
 
 `add_batch` is the wire protocol's batched op: it steps many independent walks in
 a single round trip, so even high tiers run fast while every op is still counted.
+**Negation is free** — on a curve −P = (x,−y), the one involution the
+representation hands you — which is what makes the standard √2 negation-map
+speedup legitimate (the shipped solver uses it).
 
 Your `solve` returns the recovered `k`. The oracle checks `k·P == Q` and writes
 the **score** — the value of its own operation counter — to `score.json`.
@@ -100,22 +105,24 @@ the meter, because:
 A "win" that comes from skipping group operations you actually performed, or from
 reading the secret, doesn't make the run faster — it makes it invalid.
 
-### Reference numbers (sample instance, `bits = 40`, mean of 5 trials)
+### Reference numbers (sample instance, `bits = 40`, free negation)
 
 | | Group ops | ÷ rho optimum | Notes |
 |---|---:|---:|---|
-| Shoup generic-group floor | `√n` ≈ 785,418 | 0.80× | bound on the *expected* count / success prob |
-| **Pollard-rho optimum** | `√(πn/2)` ≈ 984,377 | **1.00×** | the target |
-| Shipped baseline (parallel-DP rho, this file) | ≈ 1.22 M | ≈ 1.2–1.5× | measured 5-trial mean (see `results.tsv`) |
+| Generic floor (free negation) | `√(n/2)` ≈ 555,375 | 0.56× | bound on the *expected* count / success prob |
+| negation-map rho optimum | `√(πn/4)` ≈ 696,073 | 0.71× | best the √2 walk can do |
+| **Shipped solver (negation-map DP rho)** | ≈ **788 k** | ≈ **0.80×** | measured 8-trial mean (`results.tsv`) |
+| **Pollard-rho optimum (no neg map)** | `√(πn/2)` ≈ 984,377 | **1.00×** | the reference |
+| plain parallel-DP rho (`solutions/`) | ≈ 1.24 M | ≈ 1.2–1.4× | the negation map's √2 baseline |
 | BSGS | ≈ `2√n` ≈ 1.57 M | 1.60× | but needs `√n` memory |
 
-Scores are **means over trials**: a single rho run scatters widely (this
-baseline's individual trials ranged 0.76×–1.7×). The shipped baseline is already a
-near-optimal parallel distinguished-point rho, so pushing the mean lower takes
-real work — the negation map (≈√2), θ/W tuning, a better walk (Teske),
-Gaudry–Schost. The `√n` row is a floor on the *expected* score, **not** a hard
-per-run minimum: an individual trial can dip below it by luck without contradicting
-Shoup, whose bound is on success probability.
+Scores are **means over trials**: a single rho run scatters widely (±~50%). The
+shipped solver is a negation-map parallel distinguished-point rho — it beats the
+plain-DP baseline by the textbook **√2** (head-to-head 8-trial means: 1.26× vs
+0.90×). Pushing lower still takes real work: θ/W tuning toward the 0.71× negation
+optimum, a better r-adding walk (Teske), or Gaudry–Schost. The floor row binds the
+*expected* score, **not** any individual trial — a single run can dip below it by
+luck without contradicting Shoup (whose bound is on success probability).
 
 ---
 
@@ -139,11 +146,13 @@ ECDLP_TRIALS=1 ECDLP_BITS=40 ./benchmark.sh      # single trial, for fast iterat
 ```
 
 Edit **only** `src/solver/mod.rs`. Then re-run. The score is the mean `group_ops`;
-lower wins. The shipped baseline is a parallel distinguished-point rho; ideas to
-push it down, roughly in increasing effort: the negation map (≈√2 speedup);
-tuning `W` / the distinguished-point rate θ; a better r-adding walk (Teske);
-Gaudry–Schost. All are constant-factor improvements converging toward the
-`1.2533·√n` rho optimum.
+lower wins. The shipped solver is already a **negation-map** parallel
+distinguished-point rho (≈0.80×; it uses the free `neg`/`neg_batch` to walk the
+n/2 classes {±P}). The previous plain-DP rho is preserved at
+`solutions/baseline_parallel_dp.rs` to show the √2 gap. To push lower still: tune
+`W` and the distinguished-point rate θ toward the 0.71× negation optimum, improve
+the r-adding walk (Teske), or try Gaudry–Schost — all constant-factor moves above
+the `√(n/2)` floor.
 
 Inspect the (sample) instance you're attacking, or attempt the open
 [First-Blood board](first_blood/README.md):
@@ -163,8 +172,9 @@ This is a research instrument, not a claim that ECDLP is broken.
 - **This is the generic group model, executed.** Hiding the representation is
   what makes the op-count unforgeable — but it also means the scored arena
   *cannot host non-generic attacks*. Inside it, the *expected* score cannot go
-  below ~`√n` (Shoup); the only game is the constant factor. Individual runs vary
-  (which is why we average), and a low score is never evidence about real curves.
+  below ~`√(n/2)` (Shoup, with negation free); the only game is the constant
+  factor. Individual runs vary (which is why we average), and a low score is never
+  evidence about real curves.
 - **Generic bounds do not rule out non-generic algorithms.** A real
   representation-level structure (a cheap decomposition, a useful factor base, an
   index-calculus path) would live *outside* this oracle. To invite exactly that,
@@ -193,12 +203,13 @@ unforgeable group-operation score forces this oracle design.
 
 | Path | Trust | Role |
 |---|---|---|
-| `src/solver/mod.rs` | **editable** | your algorithm (ships with parallel-DP rho) |
+| `src/solver/mod.rs` | **editable** | your algorithm (ships with negation-map DP rho) |
 | `src/field.rs`, `src/curve.rs` | trusted | `F_p` and the real curve group |
 | `src/instance.rs` | trusted | deterministic verified-generic instance generation |
-| `src/oracle.rs`, `src/bin/oracle.rs` | trusted | the meter (Feistel-encoded GGM), verifier, scoring, trials |
-| `src/client.rs`, `src/bin/solver.rs` | trusted | binary protocol glue around your solver |
+| `src/oracle.rs`, `src/bin/oracle.rs` | trusted | the meter (Feistel-encoded GGM, free neg), verifier, scoring, trials |
+| `src/client.rs`, `src/bin/solver.rs` | trusted | binary protocol glue (add/add_batch/neg/neg_batch/scalar_mul) |
 | `benchmark.sh` / `setup.sh` | trusted | sandbox + run + score |
+| `solutions/` | reference | prior solvers (plain parallel-DP rho) — the √2 baseline |
 | `tools/verify_instance.sage` | tool | independent Sage check of an instance |
 | `tools/gen_instances.sage` | tool | larger verified-generic instances |
 | `first_blood/` | track | open representation-attack board + pure-Python verifier |
