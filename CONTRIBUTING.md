@@ -57,6 +57,20 @@ cleared environment and a hard timeout, and only after the guard has confirmed n
 trusted file was touched. The official, larger-tier scoring is run separately by
 maintainers (a fixed secret seed can't live in a fork-readable workflow).
 
+## For maintainers (integrity)
+
+For `pull_request`, GitHub runs the workflow **as defined in the PR**, so the
+checks are only truly enforced by **branch protection on `main`**:
+
+- Require status checks: **`build`**, **`editable-paths guard`**, **`correctness
+  (sandboxed harness)`**. A PR that deletes/renames a job then leaves a required
+  check missing → merge blocked. (This — not the workflow file — is what stops a
+  PR from disabling its own guard.)
+- Require review from Code Owners (see `.github/CODEOWNERS`): all paths except
+  `src/solver/` need maintainer review.
+- A genuine harness/infra PR (touching files outside `src/solver/`) gets the
+  **`harness`** label to pass the guard; adding the label re-runs the guard.
+
 ## Tips to beat the shipped solver
 
 The shipped solver is a negation-map distinguished-point rho (~0.8× rho). To go

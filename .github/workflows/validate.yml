@@ -3,18 +3,24 @@ name: validate
 # Validate submissions (and harness changes) to the ECDLP Cost Challenge.
 #
 # Security model:
-#   * `pull_request` runs the workflow file from the BASE branch, so a submission
-#     PR cannot weaken these checks by editing this file.
-#   * fork PRs get a read-only GITHUB_TOKEN and no secrets, so even untrusted
-#     solver code cannot exfiltrate or push.
+#   * For `pull_request`, GitHub runs the workflow AS DEFINED IN THE PR — so a PR
+#     *can* weaken these checks by editing this file. The real enforcement is
+#     BRANCH PROTECTION: mark `build`, `editable-paths guard`, and `correctness`
+#     as REQUIRED status checks on `main`. A PR that removes/renames a job then
+#     leaves a required check missing -> merge is blocked. Add a CODEOWNERS rule
+#     requiring maintainer review for `.github/` and `src/` (everything but
+#     `src/solver/`) as defence in depth. See CONTRIBUTING.md.
+#   * fork PRs get a read-only GITHUB_TOKEN and no secrets, and for new
+#     contributors require maintainer approval before any workflow runs.
 #   * NEVER switch this to `pull_request_target` (that would expose secrets to
 #     untrusted code).
-#   * The untrusted solver only runs in the `validate` job, which is gated behind
-#     the editable-paths guard — so by the time any contestant code executes, we
-#     have already proven the PR changed nothing but `src/solver/`.
+#   * The untrusted solver only runs in `validate`, gated behind the guard, so
+#     contestant code executes only after the diff is confirmed src/solver-only.
 
 on:
   pull_request:
+    # `labeled`/`unlabeled` so adding the `harness` label re-runs the guard.
+    types: [opened, synchronize, reopened, labeled, unlabeled]
   push:
     branches: [main]
   workflow_dispatch:
