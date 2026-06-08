@@ -4,6 +4,7 @@
   "branch": "main",
   "instances": [
     { "file": "instance_public_80.json", "bits": 80 },
+    { "file": "instance_public_88.json", "bits": 88 },
     { "file": "instance_public_96.json", "bits": 96 },
     { "file": "instance_public_112.json", "bits": 112 },
     { "file": "instance_public_128.json", "bits": 128 }
