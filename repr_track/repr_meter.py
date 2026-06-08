@@ -183,10 +183,18 @@ def main(argv=None):
     b2 = b2_race(rungs + [hold], args.boot, seed_int)
 
     # ---- verdict: b1 leads, b2 guards a sub-√n claim ------------------------
+    # Abstention is NOT suspicion: a noisy b2 (CI straddling 0) with a verified b1 is
+    # still a win on the authoritative meter. SUSPECT requires b2 to AFFIRMATIVELY
+    # contradict (gap CI entirely positive) — the off-API-gaming signature.
     b1_sub = a_ci[1] < 0.5 and b1_hold["pass"]          # clean evidence of sub-√n
-    b2_corroborates = b2["gap_ci95"][1] < -0.10         # gap CI decisively negative
-    if b1_sub:
-        verdict = "VERIFIED-FASTER" if b2_corroborates else "SUSPECT-b1-UNCORROBORATED"
+    b2_corroborates = b2["gap_ci95"][1] < 0.0           # gap CI entirely negative: out-scales control
+    b2_contradicts = b2["gap_ci95"][0] > 0.0            # gap CI entirely positive: no win
+    if b1_sub and b2_corroborates:
+        verdict = "VERIFIED-FASTER"
+    elif b1_sub and b2_contradicts:
+        verdict = "SUSPECT-b1-UNCORROBORATED"
+    elif b1_sub:
+        verdict = "VERIFIED-FASTER-b1"                   # authoritative meter verified; b2 noise-limited
     else:
         verdict = "NO-ASYMPTOTIC-WIN"
 

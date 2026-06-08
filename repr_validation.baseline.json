@@ -1,0 +1,108 @@
+{
+  "track": "representation-meter-validation",
+  "control": "pohlig-hellman on weak (controlled-order) curves \u2014 POSITIVE CONTROL, not a break",
+  "gamma": 0.5,
+  "predicted_alpha": 0.25,
+  "seed": "0xD00D",
+  "ladder_bits": [
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30
+  ],
+  "holdout_bits": 31,
+  "rungs": [
+    {
+      "bits": 24,
+      "n": 16784703,
+      "field_ops": 1593,
+      "gamma_actual": 0.4905,
+      "pmax": 3499
+    },
+    {
+      "bits": 25,
+      "n": 33557878,
+      "field_ops": 1599,
+      "gamma_actual": 0.4909,
+      "pmax": 4951
+    },
+    {
+      "bits": 26,
+      "n": 67119672,
+      "field_ops": 1847,
+      "gamma_actual": 0.5092,
+      "pmax": 9677
+    },
+    {
+      "bits": 27,
+      "n": 134205439,
+      "field_ops": 1707,
+      "gamma_actual": 0.5034,
+      "pmax": 12343
+    },
+    {
+      "bits": 28,
+      "n": 268448355,
+      "field_ops": 2505,
+      "gamma_actual": 0.5098,
+      "pmax": 19819
+    },
+    {
+      "bits": 29,
+      "n": 536858305,
+      "field_ops": 2333,
+      "gamma_actual": 0.4927,
+      "pmax": 19991
+    },
+    {
+      "bits": 30,
+      "n": 1073737450,
+      "field_ops": 2695,
+      "gamma_actual": 0.5043,
+      "pmax": 35851
+    },
+    {
+      "bits": 31,
+      "n": 2147452186,
+      "field_ops": 2978,
+      "gamma_actual": 0.5005,
+      "pmax": 46861
+    }
+  ],
+  "b1_field_ops": {
+    "alpha": 0.1359,
+    "alpha_ci95": [
+      0.0911,
+      0.1786
+    ],
+    "r2": 0.8377,
+    "holdout": {
+      "bits": 31,
+      "n": 2147452186,
+      "measured_ops": 2978,
+      "predicted_ops": 2913,
+      "pi95": [
+        2548,
+        3330
+      ],
+      "sd_param_log": 0.06835,
+      "sd_meas_log": 0.0,
+      "z": 0.324,
+      "pass": true
+    }
+  },
+  "b2_rho_race": {
+    "beta_solver": 0.0881,
+    "beta_control": 0.5786,
+    "exponent_gap": -0.4906,
+    "gap_ci95": [
+      -0.6905,
+      -0.0377
+    ],
+    "gap_r2": 0.8609
+  },
+  "verdict": "VERIFIED-FASTER"
+}

@@ -10,6 +10,9 @@ instance.secret.json
 # Representation-track candidate output (transient). The committed reference is
 # repr_scaling.baseline.json; a run writes repr_scaling.json (repr_track/repr_meter.py).
 /repr_scaling.json
+# Meter-validation candidate output (transient). Committed reference is
+# repr_validation.baseline.json; a run writes repr_validation.json (validate_meter.py).
+/repr_validation.json
 # Sage preparsed artifacts and stray research-track outputs at the repo root
 # (the curated first_blood/instance_public_*.json ARE committed).
 *.sage.py
