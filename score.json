@@ -1,13 +1,13 @@
 {
-  "score": 703231,
+  "score": 697954,
   "metrics": {
-    "group_ops": 703231,
+    "group_ops": 697954,
     "bits": 40,
     "n": 616882790773,
     "rho_reference": 984377,
     "shoup_floor": 555375,
-    "ratio_to_rho": 0.7144,
-    "trials": 32,
+    "ratio_to_rho": 0.7090,
+    "trials": 160,
     "instance_seed": 305419896,
     "token_seed_base": 4103302876398381935,
     "reproducible": true,
