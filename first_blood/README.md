@@ -43,25 +43,27 @@ the method honestly and label the claim (`OBSERVATION` / `HEURISTIC` / `THEOREM`
 ## Rules
 
 - Recover `k` for any listed instance by any method you can document.
-- Verify locally, then submit `k` + a method writeup. Verification is trivial and
-  unforgeable — it's one scalar multiplication:
+- Verify locally (one scalar multiplication, trivial and unforgeable):
 
   ```bash
   python3 verify_first_blood.py instance_public_96.json <k>
   ```
 
-- No oracle, no op counter here — this track is about *whether* you can break a
-  generic prime-field curve at all, not about constant factors.
+- Then submit it as a **pull request** (next section). No oracle, no op counter
+  here — this track is about *whether* you can break a generic prime-field curve
+  at all, not about constant factors.
 
-**Recording a solve.** The status table above is *generated* — the single source
-of truth is [`status.json`](status.json). Set the instance to `"solved"` with
-`solver` / `method` / `writeup` **and the recovered `k`** (decimal string), then
-run `python3 ../site/build.py`. It **re-verifies the proof** (`k·G == Q`) and
-*refuses* to render a solve whose `k` is missing or wrong — the same check runs in
-CI (`first-blood proofs` job) and at deploy, so a listing can never appear without
-a real, re-checkable break. On success it re-renders this table and the website's
-board, so the site updates the moment the solve lands on `main`. Don't hand-edit
-between the `<!-- BUILD:firstblood-table -->` markers.
+**Submitting a solve (contestants).** The table above is *generated from contestant
+submissions* — no maintainer hand-off. Open a PR that adds
+`submissions/first-blood-<bits>/solution.json` (your `k`, handle, and method) plus a
+`WRITEUP.md`. The **`first-blood submissions`** CI job re-verifies `k·G == Q` and
+*fails* on a missing/wrong `k` or an unknown instance, so a listing can never appear
+without a real, re-checkable break. On merge, the deploy runs `site/build.py`, which
+promotes your instance to SOLVED on this table and the website board (earliest
+`date` wins if two valid solves race the same instance). A first-blood PR touches
+only `submissions/`, so it needs no maintainer label. Full format:
+[`submissions/README.md`](../submissions/README.md). Don't hand-edit between the
+`<!-- BUILD:firstblood-table -->` markers — they're regenerated.
 
 ## Regenerate / add instances
 
@@ -70,6 +72,6 @@ sage ../tools/gen_instances.sage <bits> <seed>   # writes instance_public_<bits>
 ```
 
 The generator enforces the genericity guards and discards `k`. To post a new
-challenge: generate, commit the JSON, add an `open` entry to
-[`status.json`](status.json), and run `python3 ../site/build.py` — the row
-renders into the table above and onto the website automatically.
+challenge: generate, commit the JSON, add a `{ "file": ..., "bits": ... }` entry to
+the [`status.json`](status.json) manifest, and run `python3 ../site/build.py` — the
+row renders into the table above and onto the website as OPEN.

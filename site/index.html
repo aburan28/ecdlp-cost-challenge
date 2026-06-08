@@ -450,7 +450,7 @@
       <div class="fb-row"><div class="file">instance_public_128.json</div><div class="mono">128-bit</div><div class="open">OPEN</div><div class="who muted">—</div></div>
 <!-- /BUILD:firstblood -->
     </div>
-    <div class="note" style="margin-top:22px">A genuine sub-<span class="mono">√n</span> attack on a generic prime-field curve would be a major result. The generic floor in the arena is <b>not</b> evidence that no such attack exists — this board exists so that, if one does, it has somewhere to land. Verification is one scalar multiplication: <code style="font-family:var(--mono)">python3 verify_first_blood.py instance_public_96.json &lt;k&gt;</code> — and every claimed solve is re-checked in CI (<span class="mono">k·G == Q</span>) before it can appear on this board, so a listing here is always a real, re-verifiable break.</div>
+    <div class="note" style="margin-top:22px">A genuine sub-<span class="mono">√n</span> attack on a generic prime-field curve would be a major result. The generic floor in the arena is <b>not</b> evidence that no such attack exists — this board exists so that, if one does, it has somewhere to land. Verification is one scalar multiplication: <code style="font-family:var(--mono)">python3 verify_first_blood.py instance_public_96.json &lt;k&gt;</code>. To claim one, open a PR adding <span class="mono">submissions/first-blood-&lt;bits&gt;/solution.json</span> with your <span class="mono">k</span> — CI re-checks <span class="mono">k·G == Q</span> and the board promotes you to first solver on merge, so a listing here is always a real, re-verifiable break.</div>
   </div>
 </section>
 

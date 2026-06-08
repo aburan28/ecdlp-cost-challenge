@@ -9,25 +9,31 @@ Sections: hero → How it works (Shoup oracle) → Will you beat rho? (reference
 leaderboard) → Score history (trajectory chart) → Participate → First-Blood
 board → Scope & honesty.
 
-## Updating the First-Blood board (auto)
+## The First-Blood board (data-driven, contestant-solvable)
 
-The First-Blood board is **data-driven** so the site can never go stale when a
-challenge is solved. The single source of truth is
-[`../first_blood/status.json`](../first_blood/status.json); `build.py` renders it
-into both the board in `index.html` and the table in `first_blood/README.md`.
+The board is **derived**, so it can't go stale and contestants solve via a PR.
+`build.py` joins two inputs and renders both the board in `index.html` and the
+table in `first_blood/README.md`:
 
-To record a solve: flip the instance to `"solved"` in `status.json`
-(fill `solver` / `method` / `writeup`), then
+- [`../first_blood/status.json`](../first_blood/status.json) — the **manifest**:
+  which instances exist (`file` + `bits`), in order, plus `repo`/`branch`.
+- `../submissions/**/solution.json` — a contestant's **verified solve** (the
+  instance, the recovered `k`, handle, method). See
+  [`../submissions/README.md`](../submissions/README.md).
+
+`build.py` re-verifies every submission's `k` (`k·G == Q`) and **refuses to render
+or deploy** a missing/wrong `k`, so SOLVED is always a real break:
 
 ```bash
-python3 site/build.py            # regenerate the board + README table
-python3 site/build.py --check    # CI/pre-commit: exit 1 if anything is stale
+python3 site/build.py            # verify solves, regenerate the board + README table
+python3 site/build.py --check    # CI/pre-commit: exit 1 if files are stale
+python3 site/build.py --verify   # verify solves only (the `first-blood submissions` CI job)
 ```
 
-The Pages deploy ([`pages.yml`](../.github/workflows/pages.yml)) also runs
-`build.py` and triggers on `first_blood/**`, so a push that solves an instance
-redeploys the site with the board already updated. The content lives between
-`<!-- BUILD:firstblood -->` markers — don't hand-edit inside them.
+The Pages deploy ([`pages.yml`](../.github/workflows/pages.yml)) runs `build.py`
+and triggers on `first_blood/**` and `submissions/**`, so when a contestant's solve
+merges, the site redeploys with that instance already promoted to SOLVED. The
+content lives between `<!-- BUILD:firstblood -->` markers — don't hand-edit inside.
 
 The scored "Beat rho" leaderboard numbers (`rho_ref = 984,377`; record
 **708,536 (0.72×)**, optimum 696,061 (0.71×), Shoup floor 555,375 (0.56×)) are
