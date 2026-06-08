@@ -239,7 +239,7 @@
 
     <div class="stats">
       <!-- BUILD:arena-stats (generated from site/arena.json + results.tsv by site/build.py — do not edit by hand) -->
-      <div class="stat"><div class="v gold">0.80×</div><div class="k">current record · ÷ rho</div></div>
+      <div class="stat"><div class="v gold">0.62×</div><div class="k">current record · ÷ rho</div></div>
       <div class="stat"><div class="v">0.71×</div><div class="k">negation-map optimum</div></div>
       <div class="stat"><div class="v">0.56×</div><div class="k">generic floor √(n/2)</div></div>
       <div class="stat"><div class="v">bits = 40</div><div class="k">official tier</div></div>
@@ -280,7 +280,7 @@
 <span class="c-prompt">solver ▸</span> <span class="c-cmd">add_batch</span>(<span class="c-dim">64 parallel walks</span>) → <span class="c-tok">64 tokens</span>    <span class="c-cost">[ +64   ]</span>
 <span class="c-com">          … distinguished-point negation-map rho …</span>
 <span class="c-prompt">solver ▸</span> <span class="c-cmd">submit</span>(<span class="c-tok">k</span>)
-<span class="c-prompt">oracle ▸</span> <span class="c-ok">k·P == Q  ✓</span>   score = <!--BUILD:arena-demo--><span class="c-cost">788,034</span> group ops   <span class="c-com">(0.80× rho)</span><!--/BUILD:arena-demo--></pre>
+<span class="c-prompt">oracle ▸</span> <span class="c-ok">k·P == Q  ✓</span>   score = <!--BUILD:arena-demo--><span class="c-cost">612,655</span> group ops   <span class="c-com">(0.62× rho)</span><!--/BUILD:arena-demo--></pre>
     </div>
 
     <div class="note"><b>No loopholes.</b> Tokens are an 8-round Feistel permutation of the point, re-keyed every run — you can only name elements you reached through counted queries. The counter lives in a separate trusted process; the solver is sandboxed with no network and no filesystem writes; the secret seed is fresh and never revealed. You cannot under-report, pre-seed, replay, or read the answer off disk.</div>
@@ -303,17 +303,29 @@
         <div class="ops">555,375</div><div class="ratio r-floor">0.56×</div>
         <div class="bar"><i style="width:35%;background:var(--cyan)"></i></div>
       </div>
+      <div class="lb-row best">
+        <div class="rank mono">1</div>
+        <div class="name">full-memory θ=1 negation-m… <span class="tag-best">RECORD</span><small>full-memory θ=1 negation-map rho — record run (48-trial mean)</small></div>
+        <div class="ops">612,655</div><div class="ratio">0.62×</div>
+        <div class="bar"><i style="width:39%;background:var(--gold)"></i></div>
+      </div>
       <div class="lb-row">
         <div class="rank mono">★</div>
         <div class="name">Negation-map rho optimum<small>√(πn/4) · best the √2 walk can do</small></div>
         <div class="ops">696,059</div><div class="ratio r-good">0.71×</div>
         <div class="bar"><i style="width:44%;background:var(--accent-dim)"></i></div>
       </div>
-      <div class="lb-row best">
-        <div class="rank mono">1</div>
-        <div class="name">negation-map rho <span class="tag-best">RECORD</span><small>negation-map rho — sqrt(2) speedup over baseline (8-trial mean)</small></div>
-        <div class="ops">788,034</div><div class="ratio">0.80×</div>
-        <div class="bar"><i style="width:50%;background:var(--gold)"></i></div>
+      <div class="lb-row">
+        <div class="rank mono">—</div>
+        <div class="name">full-memory θ=1 negation-m…<small>full-memory θ=1 negation-map rho — record run (20-trial mean)</small></div>
+        <div class="ops">747,822</div><div class="ratio r-bad">0.76×</div>
+        <div class="bar"><i style="width:48%;background:var(--fail)"></i></div>
+      </div>
+      <div class="lb-row">
+        <div class="rank mono">—</div>
+        <div class="name">negation-map rho<small>negation-map rho — sqrt(2) speedup over baseline (8-trial mean)</small></div>
+        <div class="ops">788,034</div><div class="ratio r-bad">0.80×</div>
+        <div class="bar"><i style="width:50%;background:var(--fail)"></i></div>
       </div>
       <div class="lb-row">
         <div class="rank mono">—</div>
@@ -359,13 +371,19 @@
         <text x="600" y="222.5" text-anchor="end" font-size="11" fill="#38bdf8">0.56× floor</text>
         <line class="axis" x1="60" y1="40" x2="60" y2="248"/>
         <line class="axis" x1="60" y1="248" x2="600" y2="248"/>
-        <polyline points="120.0,55.1 520.0,176.7" fill="none" stroke="#f5b941" stroke-width="2.5"/>
+        <polyline points="120.0,55.1 253.3,176.7 386.7,185.3 520.0,214.2" fill="none" stroke="#f5b941" stroke-width="2.5"/>
         <circle cx="120.0" cy="55.1" r="5.5" fill="#f87171"/>
-        <circle cx="520.0" cy="176.7" r="6.5" fill="#f5b941"/>
+        <circle cx="253.3" cy="176.7" r="5.5" fill="#e7eaf0"/>
+        <circle cx="386.7" cy="185.3" r="5.5" fill="#e7eaf0"/>
+        <circle cx="520.0" cy="214.2" r="6.5" fill="#f5b941"/>
         <text x="120.0" y="43.1" text-anchor="middle" font-size="12" fill="#f87171">1.38×</text>
         <text x="120.0" y="266" text-anchor="middle" font-size="10.5">parallel-DP rho</text>
-        <text x="520.0" y="164.7" text-anchor="middle" font-size="12" fill="#f5b941">0.80×</text>
-        <text x="520.0" y="266" text-anchor="middle" font-size="10.5" fill="#f5b941">negation-map rho</text>
+        <text x="253.3" y="164.7" text-anchor="middle" font-size="12" fill="#e7eaf0">0.80×</text>
+        <text x="253.3" y="266" text-anchor="middle" font-size="10.5">negation-map rho</text>
+        <text x="386.7" y="173.3" text-anchor="middle" font-size="12" fill="#e7eaf0">0.76×</text>
+        <text x="386.7" y="266" text-anchor="middle" font-size="10.5">full-memory θ=1 negation-m…</text>
+        <text x="520.0" y="202.2" text-anchor="middle" font-size="12" fill="#f5b941">0.62×</text>
+        <text x="520.0" y="266" text-anchor="middle" font-size="10.5" fill="#f5b941">full-memory θ=1 negation-m…</text>
 <!-- /BUILD:arena-trajectory -->
       </svg>
     </div>
@@ -375,11 +393,21 @@
       <!-- BUILD:arena-history (generated from results.tsv by site/build.py — do not edit by hand) -->
       <div class="lb-row best">
         <div class="rank mono">1</div>
-        <div class="name">negation-map rho <span class="tag-best">BEST</span><small>negation-map rho — sqrt(2) speedup over baseline (8-trial mean)</small></div>
-        <div class="ops">788,034</div><div class="ratio">0.80×</div>
+        <div class="name">full-memory θ=1 negation-m… <span class="tag-best">BEST</span><small>full-memory θ=1 negation-map rho — record run (48-trial mean)</small></div>
+        <div class="ops">612,655</div><div class="ratio">0.62×</div>
       </div>
       <div class="lb-row">
         <div class="rank mono">2</div>
+        <div class="name">full-memory θ=1 negation-m…<small>full-memory θ=1 negation-map rho — record run (20-trial mean)</small></div>
+        <div class="ops">747,822</div><div class="ratio r-ref">0.76×</div>
+      </div>
+      <div class="lb-row">
+        <div class="rank mono">3</div>
+        <div class="name">negation-map rho<small>negation-map rho — sqrt(2) speedup over baseline (8-trial mean)</small></div>
+        <div class="ops">788,034</div><div class="ratio r-ref">0.80×</div>
+      </div>
+      <div class="lb-row">
+        <div class="rank mono">4</div>
         <div class="name">parallel-DP rho<small>baseline: parallel-DP rho (8-trial mean)</small></div>
         <div class="ops">1,356,674</div><div class="ratio r-bad">1.38×</div>
       </div>

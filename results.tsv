@@ -1,3 +1,5 @@
 timestamp	commit	group_ops	bits	rho_ref	ratio	correct	note
 1780844828	34ec298	1356674	40	984377	1.3782	OK	baseline: parallel-DP rho (8-trial mean)
 1780844885	34ec298	788034	40	984377	0.8005	OK	negation-map rho — sqrt(2) speedup over baseline (8-trial mean)
+1780931113	3c6102b	747822	40	984377	0.7597	OK	full-memory θ=1 negation-map rho — record run (20-trial mean)
+1780931261	3c6102b	612655	40	984377	0.6224	OK	full-memory θ=1 negation-map rho — record run (48-trial mean)

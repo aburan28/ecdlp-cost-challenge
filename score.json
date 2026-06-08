@@ -1,13 +1,13 @@
 {
-  "score": 788034,
+  "score": 612655,
   "metrics": {
-    "group_ops": 788034,
+    "group_ops": 612655,
     "bits": 40,
     "n": 616882790773,
     "rho_reference": 984377,
     "shoup_floor": 555375,
-    "ratio_to_rho": 0.8005,
-    "trials": 8,
+    "ratio_to_rho": 0.6224,
+    "trials": 48,
     "correct": true
   }
 }
