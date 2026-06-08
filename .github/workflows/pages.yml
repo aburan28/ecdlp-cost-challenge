@@ -2,11 +2,21 @@ name: Deploy site to GitHub Pages
 
 # Publishes site/ to GitHub Pages. Requires Settings → Pages → Source =
 # "GitHub Actions" (set once). The CNAME in site/ pins the custom domain.
+#
+# The site updates automatically when a challenge is solved: the deploy runs
+# `site/build.py`, which renders the First-Blood board from its single source of
+# truth (first_blood/status.json). So a push that flips an instance to "solved"
+# redeploys with the board already up to date — see the `paths` trigger below.
 
 on:
   push:
     branches: [main]
-    paths: ['site/**', '.github/workflows/pages.yml']
+    paths:
+      - 'site/**'
+      - 'first_blood/**'
+      - 'submissions/**'
+      - 'results.tsv'
+      - '.github/workflows/pages.yml'
   workflow_dispatch:
 
 permissions:
@@ -27,6 +37,14 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      # Render the dynamic regions (First-Blood board) from their source of
+      # truth so the deployed artifact is always current, even if a contributor
+      # forgot to run build.py locally.
+      - name: Render site from data
+        run: python3 site/build.py
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
