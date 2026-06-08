@@ -1,0 +1,486 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ECDLP.fail — how cheaply can you solve a discrete log?</title>
+<meta name="description" content="An executable generic-group oracle for the elliptic-curve discrete log problem. Recover k with Q = k·P in as few counted group operations as you can. Lower is better." />
+<meta name="theme-color" content="#0a0c10" />
+<meta property="og:title" content="ECDLP.fail — how cheaply can you solve a discrete log?" />
+<meta property="og:description" content="Recover an ECDLP discrete log inside an executable generic-group oracle, using as few counted group operations as possible. Score = group ops. Lower is better." />
+<meta property="og:type" content="website" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%230a0c10'/%3E%3Ctext x='32' y='44' font-family='monospace' font-size='34' fill='%234ade80' text-anchor='middle'%3E%E2%88%9A%3C/text%3E%3C/svg%3E" />
+<style>
+  :root{
+    --bg:#0a0c10; --bg-elev:#12151c; --bg-elev2:#171b24;
+    --border:#232a37; --border-soft:#1a202b;
+    --text:#e7eaf0; --muted:#97a1b2; --faint:#6c7686;
+    --accent:#4ade80; --accent-dim:#2f9c5a; --cyan:#38bdf8;
+    --fail:#f87171; --gold:#f5b941;
+    --mono:ui-monospace,"SF Mono","JetBrains Mono","Cascadia Code",Menlo,Consolas,monospace;
+    --sans:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --maxw:1080px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:var(--sans); line-height:1.6;
+    -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+    overflow-x:hidden;
+  }
+  /* subtle grid + glow backdrop */
+  body::before{
+    content:""; position:fixed; inset:0; z-index:-2;
+    background:
+      radial-gradient(900px 500px at 78% -8%, rgba(74,222,128,.10), transparent 60%),
+      radial-gradient(700px 500px at 8% 4%, rgba(56,189,248,.07), transparent 55%);
+    pointer-events:none;
+  }
+  body::after{
+    content:""; position:fixed; inset:0; z-index:-2; opacity:.35;
+    background-image:linear-gradient(var(--border-soft) 1px,transparent 1px),
+                     linear-gradient(90deg,var(--border-soft) 1px,transparent 1px);
+    background-size:46px 46px;
+    -webkit-mask-image:radial-gradient(circle at 50% 0%,#000 0%,transparent 70%);
+            mask-image:radial-gradient(circle at 50% 0%,#000 0%,transparent 70%);
+    pointer-events:none;
+  }
+  a{color:inherit}
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 22px}
+  .mono{font-family:var(--mono)}
+  .accent{color:var(--accent)}
+  .fail{color:var(--fail)}
+  .muted{color:var(--muted)}
+
+  .skip{position:absolute;left:-999px;top:0;background:var(--accent);color:#031;padding:8px 14px;border-radius:0 0 8px 0;z-index:99}
+  .skip:focus{left:0}
+
+  /* nav */
+  header.nav{position:sticky;top:0;z-index:50;backdrop-filter:blur(10px);
+    background:rgba(10,12,16,.72);border-bottom:1px solid var(--border-soft)}
+  .nav-in{display:flex;align-items:center;justify-content:space-between;height:60px}
+  .brand{font-family:var(--mono);font-weight:700;letter-spacing:.5px;font-size:18px;text-decoration:none}
+  .brand .dot{color:var(--fail)}
+  .nav-links{display:flex;gap:26px;align-items:center}
+  .nav-links a{color:var(--muted);text-decoration:none;font-size:14px;font-weight:500;transition:color .15s}
+  .nav-links a:hover{color:var(--text)}
+  .nav-links a.ghub{color:var(--text);border:1px solid var(--border);padding:7px 13px;border-radius:8px}
+  .nav-links a.ghub:hover{border-color:var(--accent);color:var(--accent)}
+  .navtoggle{display:none;background:none;border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 10px;font-size:18px;cursor:pointer}
+
+  /* hero */
+  .hero{padding:84px 0 56px;text-align:center}
+  .eyebrow{display:inline-flex;align-items:center;gap:9px;font-family:var(--mono);font-size:12.5px;
+    color:var(--muted);border:1px solid var(--border);border-radius:999px;padding:6px 14px;margin-bottom:26px}
+  .eyebrow .pip{width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 10px var(--accent)}
+  h1.title{font-family:var(--mono);font-weight:800;font-size:clamp(46px,9vw,104px);line-height:.95;margin:0;letter-spacing:-1px}
+  .tagline{font-size:clamp(19px,2.6vw,27px);font-weight:600;margin:22px auto 0;max-width:760px;color:var(--text)}
+  .subtag{font-size:16.5px;color:var(--muted);max-width:660px;margin:16px auto 0}
+  .eq{font-family:var(--mono);margin:26px auto 0;display:inline-block;padding:12px 20px;border:1px solid var(--border);
+    border-radius:12px;background:var(--bg-elev);color:var(--muted);font-size:15px}
+  .eq b{color:var(--accent);font-weight:600}
+  .cta{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:34px}
+  .btn{display:inline-flex;align-items:center;gap:9px;text-decoration:none;font-weight:600;font-size:15px;
+    padding:13px 22px;border-radius:10px;transition:transform .12s,box-shadow .2s,background .2s,border-color .2s}
+  .btn:hover{transform:translateY(-2px)}
+  .btn.primary{background:var(--accent);color:#04240f;box-shadow:0 8px 30px rgba(74,222,128,.25)}
+  .btn.primary:hover{box-shadow:0 12px 38px rgba(74,222,128,.38)}
+  .btn.ghost{background:var(--bg-elev);color:var(--text);border:1px solid var(--border)}
+  .btn.ghost:hover{border-color:var(--accent);color:var(--accent)}
+
+  .stats{display:flex;gap:0;justify-content:center;flex-wrap:wrap;margin:54px auto 0;max-width:760px;
+    border:1px solid var(--border);border-radius:14px;overflow:hidden;background:var(--bg-elev)}
+  .stat{flex:1 1 0;min-width:160px;padding:20px 18px;text-align:center;border-right:1px solid var(--border-soft)}
+  .stat:last-child{border-right:none}
+  .stat .v{font-family:var(--mono);font-size:26px;font-weight:700;color:var(--accent)}
+  .stat .v.gold{color:var(--gold)}
+  .stat .k{font-size:12.5px;color:var(--muted);margin-top:4px;letter-spacing:.3px}
+
+  /* sections */
+  section{padding:72px 0;border-top:1px solid var(--border-soft)}
+  .seclabel{font-family:var(--mono);font-size:13px;color:var(--accent);letter-spacing:2px;text-transform:uppercase;margin:0 0 10px}
+  h2{font-size:clamp(28px,4vw,40px);margin:0 0 14px;font-weight:750;letter-spacing:-.5px}
+  .lead{font-size:17.5px;color:var(--muted);max-width:720px;margin:0 0 8px}
+
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:38px}
+  .card{background:var(--bg-elev);border:1px solid var(--border);border-radius:14px;padding:24px;transition:border-color .2s,transform .2s}
+  .card:hover{border-color:var(--border);transform:translateY(-3px)}
+  .card .num{font-family:var(--mono);font-size:13px;color:var(--accent);border:1px solid var(--border);border-radius:8px;
+    width:34px;height:34px;display:flex;align-items:center;justify-content:center;margin-bottom:14px}
+  .card h3{margin:0 0 8px;font-size:18.5px}
+  .card p{margin:0;color:var(--muted);font-size:15px}
+  .card code{font-family:var(--mono);color:var(--text);background:var(--bg-elev2);padding:1px 6px;border-radius:5px;font-size:13px}
+
+  .note{margin-top:26px;border-left:3px solid var(--accent);background:linear-gradient(90deg,rgba(74,222,128,.06),transparent);
+    padding:14px 18px;border-radius:0 10px 10px 0;color:var(--muted);font-size:15px}
+  .note b{color:var(--text)}
+
+  /* leaderboard / reference table */
+  .lb{margin-top:34px;border:1px solid var(--border);border-radius:14px;overflow:hidden;background:var(--bg-elev)}
+  .lb-row{display:grid;grid-template-columns:30px 1fr 130px 88px;align-items:center;gap:14px;
+    padding:15px 20px;border-top:1px solid var(--border-soft)}
+  .lb-row:first-child{border-top:none}
+  .lb-head{background:var(--bg-elev2);font-size:12px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);font-weight:600}
+  .lb-row .rank{font-family:var(--mono);color:var(--faint);font-size:14px}
+  .lb-row .name{font-weight:600;font-size:15.5px}
+  .lb-row .name small{display:block;color:var(--muted);font-weight:400;font-size:12.5px;margin-top:2px}
+  .lb-row .ops{font-family:var(--mono);text-align:right;color:var(--text);font-size:15px}
+  .lb-row .ratio{font-family:var(--mono);text-align:right;font-weight:700}
+  .bar{grid-column:1 / -1;height:6px;border-radius:4px;background:var(--bg-elev2);overflow:hidden;margin-top:-4px}
+  .bar > i{display:block;height:100%;border-radius:4px}
+  .best{background:linear-gradient(90deg,rgba(245,185,65,.10),transparent)}
+  .best .ratio{color:var(--gold)}
+  .tag-best{font-family:var(--mono);font-size:10.5px;color:#1a1304;background:var(--gold);padding:2px 7px;border-radius:5px;margin-left:8px;vertical-align:middle;font-weight:700}
+  .r-floor{color:var(--cyan)} .r-good{color:var(--accent)} .r-ref{color:var(--muted)} .r-bad{color:var(--fail)}
+
+  /* trajectory chart */
+  .chartcard{margin-top:34px;background:var(--bg-elev);border:1px solid var(--border);border-radius:14px;padding:26px}
+  .chartcard h3{margin:0 0 4px;font-size:18px}
+  .chartcard p{margin:0 0 10px;color:var(--muted);font-size:14px}
+  svg .axis{stroke:var(--border);stroke-width:1}
+  svg .ref{stroke-dasharray:5 5;stroke-width:1.3}
+  svg text{font-family:var(--mono);fill:var(--muted)}
+
+  /* terminal */
+  .term{background:#070809;border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-top:30px;
+    box-shadow:0 20px 60px rgba(0,0,0,.45)}
+  .term-bar{display:flex;align-items:center;gap:8px;padding:11px 15px;background:var(--bg-elev2);border-bottom:1px solid var(--border-soft)}
+  .term-bar .d{width:11px;height:11px;border-radius:50%}
+  .term-bar .t{margin-left:10px;font-family:var(--mono);font-size:12.5px;color:var(--muted)}
+  .term pre{margin:0;padding:20px;font-family:var(--mono);font-size:13.5px;line-height:1.85;color:#cdd6e2;overflow-x:auto}
+  .term .c-cmd{color:#cdd6e2} .term .c-prompt{color:var(--accent)} .term .c-dim{color:var(--faint)}
+  .term .c-tok{color:var(--cyan)} .term .c-ok{color:var(--accent)} .term .c-cost{color:var(--gold)} .term .c-com{color:var(--faint)}
+
+  .codeblock{margin-top:24px;background:#070809;border:1px solid var(--border);border-radius:12px;padding:20px 22px;
+    font-family:var(--mono);font-size:13.5px;line-height:1.9;color:#cdd6e2;overflow-x:auto}
+  .codeblock .c-com{color:var(--faint)} .codeblock .c-prompt{color:var(--accent)} .codeblock .c-key{color:var(--cyan)}
+
+  .tiers{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:24px}
+  .tier{border:1px solid var(--border);border-radius:12px;padding:18px;background:var(--bg-elev)}
+  .tier .lvl{font-family:var(--mono);font-size:13px;color:var(--accent)}
+  .tier .nm{font-weight:600;margin:6px 0 2px}
+  .tier .ds{color:var(--muted);font-size:13.5px}
+
+  /* first blood */
+  .fb-row{display:grid;grid-template-columns:1fr 110px 110px 1fr;gap:14px;align-items:center;padding:14px 20px;border-top:1px solid var(--border-soft);font-size:15px}
+  .fb-row:first-child{border-top:none}
+  .fb-head{background:var(--bg-elev2);font-size:12px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);font-weight:600}
+  .fb-row .file{font-family:var(--mono);font-size:13.5px}
+  .open{color:var(--accent);font-family:var(--mono);font-size:13.5px}
+  .open::before{content:"●  ";color:var(--accent)}
+
+  /* scope */
+  .scopegrid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:30px}
+  .scopegrid .card p{font-size:14.5px}
+
+  footer{border-top:1px solid var(--border-soft);padding:48px 0 60px;text-align:center}
+  .foot-links{display:flex;gap:22px;justify-content:center;margin:18px 0}
+  .foot-links a{color:var(--muted);text-decoration:none;font-size:14px;display:inline-flex;gap:7px;align-items:center}
+  .foot-links a:hover{color:var(--accent)}
+  .foot-note{color:var(--faint);font-size:13px;max-width:600px;margin:0 auto}
+
+  /* fade-in only when JS is present, so content is never hidden without it */
+  .js .reveal{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
+  .js .reveal.in{opacity:1;transform:none}
+
+  @media (max-width:780px){
+    .nav-links{display:none} .navtoggle{display:block}
+    .nav-links.open{display:flex;position:absolute;top:60px;left:0;right:0;flex-direction:column;gap:0;
+      background:var(--bg);border-bottom:1px solid var(--border)}
+    .nav-links.open a{padding:15px 22px;border-top:1px solid var(--border-soft);width:100%}
+    .grid3,.tiers,.scopegrid{grid-template-columns:1fr}
+    .lb-row{grid-template-columns:24px 1fr 92px 64px;gap:9px;padding:13px 14px}
+    .fb-row{grid-template-columns:1fr 80px 70px;font-size:13.5px}
+    .fb-row .who{display:none}
+    .stat{border-right:none;border-bottom:1px solid var(--border-soft)}
+  }
+  @media (prefers-reduced-motion:reduce){.reveal{transition:none;opacity:1;transform:none}.btn:hover{transform:none}}
+</style>
+</head>
+<body>
+<a class="skip" href="#participate">Skip to challenge</a>
+
+<header class="nav">
+  <div class="wrap nav-in">
+    <a class="brand" href="#top">ECDLP<span class="dot">.fail</span></a>
+    <nav class="nav-links" id="navlinks">
+      <a href="#how">How it works</a>
+      <a href="#beat">Beat rho</a>
+      <a href="#leaderboard">Leaderboard</a>
+      <a href="#participate">Participate</a>
+      <a href="#firstblood">First blood</a>
+      <a class="ghub" href="https://github.com/aburan28/ecdlp-cost-challenge" target="_blank" rel="noopener">GitHub ↗</a>
+    </nav>
+    <button class="navtoggle" id="navtoggle" aria-label="Menu">≡</button>
+  </div>
+</header>
+
+<main id="top">
+
+<!-- HERO -->
+<section class="hero" style="border-top:none">
+  <div class="wrap">
+    <span class="eyebrow"><span class="pip"></span> a resource-cost cryptanalysis benchmark</span>
+    <h1 class="title">ECDLP<span class="fail">.fail</span></h1>
+    <p class="tagline">How cheaply can you solve a discrete log?</p>
+    <p class="subtag">Recover the secret <span class="mono">k</span> inside an <b>executable generic-group oracle</b> — using as few <b>counted group operations</b> as you can. Every elliptic-curve addition is one query. Lower is better.</p>
+    <div class="eq mono">find <b>k</b> &nbsp;such that&nbsp; <b>Q = k·P</b> &nbsp;&nbsp;·&nbsp;&nbsp; score = group operations &nbsp;·&nbsp; <b>↓ lower wins</b></div>
+    <div class="cta">
+      <a class="btn primary" href="https://github.com/aburan28/ecdlp-cost-challenge" target="_blank" rel="noopener">Take the challenge ↗</a>
+      <a class="btn ghost" href="#how">How it works</a>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><div class="v gold">0.72×</div><div class="k">current record · ÷ rho</div></div>
+      <div class="stat"><div class="v">0.71×</div><div class="k">negation-map optimum</div></div>
+      <div class="stat"><div class="v">0.56×</div><div class="k">generic floor √(n/2)</div></div>
+      <div class="stat"><div class="v">bits = 40</div><div class="k">official tier</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section id="how">
+  <div class="wrap reveal">
+    <p class="seclabel">How it works</p>
+    <h2>You play inside Shoup's oracle</h2>
+    <p class="lead">The group is a black box. You never see coordinates — only opaque, per-run-random 128-bit tokens — so the operation count the oracle keeps is unforgeable. There is no way to do a group operation off-meter.</p>
+
+    <div class="grid3">
+      <div class="card">
+        <div class="num">1</div>
+        <h3>The oracle holds the secret</h3>
+        <p>A real curve <code>E: y²=x³+ax+b</code> over <code>F_p</code> with <b>prime</b> order <code>n</code>, a generator <code>P</code>, a secret scalar <code>k</code>, and the target <code>Q = k·P</code>. It hands you only tokens for <code>P</code>, <code>Q</code>, <code>O</code>.</p>
+      </div>
+      <div class="card">
+        <div class="num">2</div>
+        <h3>A counted interface</h3>
+        <p><code>add</code> costs <b>+1</b>. <code>neg</code> is <b>free</b> (−P=(x,−y)). <code>scalar_mul</code> costs its doublings + adds. Batched <code>add_batch</code> / <code>neg_batch</code> step many walks in one round trip — every op still counted.</p>
+      </div>
+      <div class="card">
+        <div class="num">3</div>
+        <h3>Return k, get scored</h3>
+        <p>The oracle checks <code>k·P = Q</code> on the real curve and writes its operation counter to <code>score.json</code>. The score is the <b>mean over several trials</b> — rho's collision time has heavy variance.</p>
+      </div>
+    </div>
+
+    <div class="term">
+      <div class="term-bar"><span class="d" style="background:#ff5f56"></span><span class="d" style="background:#ffbd2e"></span><span class="d" style="background:#27c93f"></span><span class="t">oracle session — every add is metered</span></div>
+<pre><span class="c-prompt">solver ▸</span> <span class="c-cmd">add</span>(<span class="c-tok">t_a</span>, <span class="c-tok">t_b</span>)            → <span class="c-tok">t_c</span>          <span class="c-cost">[ +1 op ]</span>
+<span class="c-prompt">solver ▸</span> <span class="c-cmd">neg</span>(<span class="c-tok">t_c</span>)                 → <span class="c-tok">t_-c</span>         <span class="c-cost">[ free  ]</span>
+<span class="c-prompt">solver ▸</span> <span class="c-cmd">add_batch</span>(<span class="c-dim">64 parallel walks</span>) → <span class="c-tok">64 tokens</span>    <span class="c-cost">[ +64   ]</span>
+<span class="c-com">          … distinguished-point negation-map rho …</span>
+<span class="c-prompt">solver ▸</span> <span class="c-cmd">submit</span>(<span class="c-tok">k</span>)
+<span class="c-prompt">oracle ▸</span> <span class="c-ok">k·P == Q  ✓</span>   score = <span class="c-cost">708,536</span> group ops   <span class="c-com">(0.72× rho)</span></pre>
+    </div>
+
+    <div class="note"><b>No loopholes.</b> Tokens are an 8-round Feistel permutation of the point, re-keyed every run — you can only name elements you reached through counted queries. The counter lives in a separate trusted process; the solver is sandboxed with no network and no filesystem writes; the secret seed is fresh and never revealed. You cannot under-report, pre-seed, replay, or read the answer off disk.</div>
+  </div>
+</section>
+
+<!-- BEAT RHO -->
+<section id="beat">
+  <div class="wrap reveal">
+    <p class="seclabel">The benchmark</p>
+    <h2>Will you beat rho?</h2>
+    <p class="lead">Pollard's rho is the best known general-purpose attack on the discrete-log problem: about <span class="mono">√(πn/2) ≈ 1.2533·√n</span> group operations. Shoup's generic lower bound says <b>no</b> black-box algorithm does asymptotically better than <span class="mono">√n</span>. This challenge turns that argument into a measurable game — a constant-factor arena. How close to the floor can a real implementation get?</p>
+
+    <div class="lb">
+      <div class="lb-row lb-head"><div class="rank">#</div><div class="name">Method</div><div class="ops">group ops</div><div class="ratio">÷ rho</div></div>
+
+      <div class="lb-row">
+        <div class="rank mono">—</div>
+        <div class="name">Generic floor <small>√(n/2) · Shoup bound on the expected score</small></div>
+        <div class="ops">555,375</div><div class="ratio r-floor">0.56×</div>
+        <div class="bar"><i style="width:36%;background:var(--cyan)"></i></div>
+      </div>
+
+      <div class="lb-row">
+        <div class="rank mono">★</div>
+        <div class="name">Negation-map rho optimum <small>√(πn/4) · best the √2 walk can do</small></div>
+        <div class="ops">696,061</div><div class="ratio r-good">0.71×</div>
+        <div class="bar"><i style="width:45%;background:var(--accent-dim)"></i></div>
+      </div>
+
+      <div class="lb-row best">
+        <div class="rank mono">1</div>
+        <div class="name">Negation-map DP rho <span class="tag-best">RECORD</span><small>cheap jump table · small W · large R · DP-free-cycle escape</small></div>
+        <div class="ops">708,536</div><div class="ratio">0.72×</div>
+        <div class="bar"><i style="width:46%;background:var(--gold)"></i></div>
+      </div>
+
+      <div class="lb-row">
+        <div class="rank mono">—</div>
+        <div class="name">Pollard-rho optimum <small>√(πn/2) · the reference, 1.00×</small></div>
+        <div class="ops">984,377</div><div class="ratio r-ref">1.00×</div>
+        <div class="bar"><i style="width:64%;background:var(--muted)"></i></div>
+      </div>
+
+      <div class="lb-row">
+        <div class="rank mono">—</div>
+        <div class="name">Plain parallel-DP rho <small>the √2 baseline, no negation map</small></div>
+        <div class="ops">1,356,674</div><div class="ratio r-bad">1.38×</div>
+        <div class="bar"><i style="width:88%;background:var(--fail)"></i></div>
+      </div>
+
+      <div class="lb-row">
+        <div class="rank mono">—</div>
+        <div class="name">Baby-step giant-step <small>deterministic, but needs √n memory</small></div>
+        <div class="ops">1,570,838</div><div class="ratio r-bad">1.60×</div>
+        <div class="bar"><i style="width:100%;background:var(--fail)"></i></div>
+      </div>
+    </div>
+    <p class="muted" style="font-size:13.5px;margin-top:14px">Tier <span class="mono">bits = 40</span> · <span class="mono">n = 616,882,790,773</span> · <span class="mono">rho_ref = 984,377</span>. Scores are means over trials; a single run can dip below the floor by luck — which is exactly why the leaderboard quantity is the mean.</p>
+  </div>
+</section>
+
+<!-- LEADERBOARD / TRAJECTORY -->
+<section id="leaderboard">
+  <div class="wrap reveal">
+    <p class="seclabel">Score history</p>
+    <h2>The descent toward the floor</h2>
+    <p class="lead">Each improvement is a pure constant-factor move: kill the setup waste, stop paying for parallelism you don't need on a single-threaded meter, and tame the negation map's fruitless cycles. The wall is <span class="mono">0.71×</span> — the negation-map rho optimum. Going below it <em>in expectation</em> would mean leaving the generic model.</p>
+
+    <div class="chartcard">
+      <h3>Trajectory · ÷ rho (lower is better)</h3>
+      <p>parallel-DP rho → negation-map rho → tuned negation-map DP rho</p>
+      <svg viewBox="0 0 620 270" width="100%" role="img" aria-label="Score trajectory chart descending from 1.38x to 0.72x toward the 0.71x optimum">
+        <!-- y reference lines: ratio→y mapping over [0.50..1.45] -> [240..40] -->
+        <!-- rho 1.00 -->
+        <line class="ref" x1="60" y1="134.7" x2="600" y2="134.7" stroke="#97a1b2"/>
+        <text x="600" y="130" text-anchor="end" font-size="11">1.00× rho</text>
+        <!-- optimum 0.707 -->
+        <line class="ref" x1="60" y1="196.4" x2="600" y2="196.4" stroke="#4ade80"/>
+        <text x="600" y="192" text-anchor="end" font-size="11" fill="#4ade80">0.71× optimum</text>
+        <!-- floor 0.564 -->
+        <line class="ref" x1="60" y1="226.5" x2="600" y2="226.5" stroke="#38bdf8"/>
+        <text x="600" y="222" text-anchor="end" font-size="11" fill="#38bdf8">0.56× floor</text>
+        <!-- axes -->
+        <line class="axis" x1="60" y1="40" x2="60" y2="248"/>
+        <line class="axis" x1="60" y1="248" x2="600" y2="248"/>
+        <!-- descent polyline: (120,55.2)-(330,176.8)-(520,193.7) -->
+        <polyline points="120,55.2 330,176.8 520,193.7" fill="none" stroke="#f5b941" stroke-width="2.5"/>
+        <circle cx="120" cy="55.2" r="5.5" fill="#f87171"/>
+        <circle cx="330" cy="176.8" r="5.5" fill="#e7eaf0"/>
+        <circle cx="520" cy="193.7" r="6.5" fill="#f5b941"/>
+        <!-- point labels -->
+        <text x="120" y="42" text-anchor="middle" font-size="12" fill="#f87171">1.38×</text>
+        <text x="120" y="266" text-anchor="middle" font-size="10.5">parallel-DP</text>
+        <text x="330" y="166" text-anchor="middle" font-size="12" fill="#e7eaf0">0.80×</text>
+        <text x="330" y="266" text-anchor="middle" font-size="10.5">negation-map</text>
+        <text x="520" y="183" text-anchor="middle" font-size="12" fill="#f5b941">0.72×</text>
+        <text x="520" y="266" text-anchor="middle" font-size="10.5" fill="#f5b941">tuned · RECORD</text>
+      </svg>
+    </div>
+
+    <div class="lb" style="margin-top:18px">
+      <div class="lb-row lb-head"><div class="rank">#</div><div class="name">Submission</div><div class="ops">mean ops</div><div class="ratio">÷ rho</div></div>
+      <div class="lb-row best">
+        <div class="rank mono">1</div>
+        <div class="name">neg-map DP rho — cheap table · small W · large R <span class="tag-best">BEST</span><small>32-trial mean · within 2% of the theoretical optimum</small></div>
+        <div class="ops">708,536</div><div class="ratio">0.72×</div>
+      </div>
+      <div class="lb-row">
+        <div class="rank mono">2</div>
+        <div class="name">negation-map rho <small>√2 speedup over the plain baseline</small></div>
+        <div class="ops">788,034</div><div class="ratio r-ref">0.80×</div>
+      </div>
+      <div class="lb-row">
+        <div class="rank mono">3</div>
+        <div class="name">parallel-DP rho <small>the starting point</small></div>
+        <div class="ops">1,356,674</div><div class="ratio r-bad">1.38×</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PARTICIPATE -->
+<section id="participate">
+  <div class="wrap reveal">
+    <p class="seclabel">Participate</p>
+    <h2>Edit one file. Run. Score.</h2>
+    <p class="lead">A Rust harness with two halves separated by a process boundary: the trusted oracle, and your solver. You edit exactly one file — <code style="font-family:var(--mono)">src/solver/mod.rs</code> — and the sandbox does the rest.</p>
+
+    <div class="codeblock">
+<span class="c-com"># clone &amp; build the oracle, solver, and instance generator</span>
+<span class="c-prompt">$</span> git clone https://github.com/aburan28/ecdlp-cost-challenge
+<span class="c-prompt">$</span> cd ecdlp-cost-challenge
+<span class="c-prompt">$</span> ./setup.sh
+
+<span class="c-com"># the ONE file you may change — your algorithm lives here</span>
+<span class="c-prompt">$</span> $EDITOR src/solver/mod.rs
+
+<span class="c-com"># sandboxed run: builds, confines the solver, scores the mean</span>
+<span class="c-prompt">$</span> <span class="c-key">ECDLP_BITS</span>=40 ./benchmark.sh --note "tried Gaudry–Schost"
+<span class="c-prompt">$</span> cat score.json        <span class="c-com"># your score; one row appended to results.tsv</span>
+    </div>
+
+    <div class="tiers">
+      <div class="tier"><div class="lvl">ECDLP_BITS=28</div><div class="nm">Warmup</div><div class="ds">~instant. Good for iterating on correctness.</div></div>
+      <div class="tier"><div class="lvl">ECDLP_BITS=40</div><div class="nm">Official</div><div class="ds">The scored tier. A few seconds per trial.</div></div>
+      <div class="tier"><div class="lvl">ECDLP_BITS=48</div><div class="nm">Stretch</div><div class="ds">~1–2 min. Binary batched protocol keeps it fast.</div></div>
+    </div>
+
+    <div class="note" style="margin-top:28px">Where to push next: tune the distinguished-point rate <b>θ</b> and walk count <b>W</b> toward the 0.71× optimum, build a better r-adding walk (<b>Teske</b>), or try <b>Gaudry–Schost</b> — all constant-factor moves above the <span class="mono">√(n/2)</span> floor. The shipped solver already ships a negation-map distinguished-point rho; beat it.</div>
+  </div>
+</section>
+
+<!-- FIRST BLOOD -->
+<section id="firstblood">
+  <div class="wrap reveal">
+    <p class="seclabel">The other half</p>
+    <h2>First-Blood board — the representation track</h2>
+    <p class="lead">The scored arena hides the curve, so it can only measure <em>generic</em> algorithms, where <span class="mono">√n</span> is a proven floor. This board is the opposite half: it publishes the <b>full curve</b> <span class="mono">(p, a, b, G, Q)</span> and dares you to recover <code>k</code> by <em>any</em> method — generic or not. <code>k</code> was generated at random and discarded; nobody knows it.</p>
+
+    <div class="lb">
+      <div class="fb-row fb-head"><div>Instance</div><div>Field</div><div>Status</div><div class="who">First solver</div></div>
+      <div class="fb-row"><div class="file">instance_public_80.json</div><div class="mono">80-bit</div><div class="open">OPEN</div><div class="who muted">—</div></div>
+      <div class="fb-row"><div class="file">instance_public_96.json</div><div class="mono">96-bit</div><div class="open">OPEN</div><div class="who muted">—</div></div>
+      <div class="fb-row"><div class="file">instance_public_112.json</div><div class="mono">112-bit</div><div class="open">OPEN</div><div class="who muted">—</div></div>
+      <div class="fb-row"><div class="file">instance_public_128.json</div><div class="mono">128-bit</div><div class="open">OPEN</div><div class="who muted">—</div></div>
+    </div>
+    <div class="note" style="margin-top:22px">A genuine sub-<span class="mono">√n</span> attack on a generic prime-field curve would be a major result. The generic floor in the arena is <b>not</b> evidence that no such attack exists — this board exists so that, if one does, it has somewhere to land. Verification is one scalar multiplication: <code style="font-family:var(--mono)">python3 verify_first_blood.py instance_public_96.json &lt;k&gt;</code>.</div>
+  </div>
+</section>
+
+<!-- SCOPE -->
+<section id="scope">
+  <div class="wrap reveal">
+    <p class="seclabel">Scope &amp; honesty</p>
+    <h2>What the score does — and doesn't — mean</h2>
+    <div class="scopegrid">
+      <div class="card"><h3>It's the GGM, executed</h3><p>Hiding the representation is what makes the op-count unforgeable — but it also means the scored arena cannot host non-generic attacks. Inside it, the expected score cannot go below <span class="mono">√(n/2)</span>; the only game is the constant factor.</p></div>
+      <div class="card"><h3>"Generic" is enforced</h3><p>Every instance has prime order, <span class="mono">n ≠ p</span>, large MOV embedding degree, and <span class="mono">j ∉ {0,1728}</span>. The generator computes the order exactly and Sage re-checks it — a win can never come from an accidentally weak curve.</p></div>
+      <div class="card"><h3>Sizes are toy by design</h3><p>Scored tiers are small enough to actually solve (<span class="mono">bits ≤ 48</span>). This benchmarks algorithmic group-operation efficiency — it is not a break of any deployed parameter set. Nothing here recovers a real key.</p></div>
+      <div class="card"><h3>A research instrument</h3><p>Not a claim that ECDLP is broken. It asks one clean, finite question: how close to the rho optimum — and to the Shoup floor — can a real implementation get?</p></div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <a class="brand" href="#top" style="font-size:20px">ECDLP<span class="dot">.fail</span></a>
+    <div class="foot-links">
+      <a href="https://github.com/aburan28/ecdlp-cost-challenge" target="_blank" rel="noopener">⌥ GitHub</a>
+      <a href="https://github.com/aburan28/ecdlp-cost-challenge/blob/main/DESIGN.md" target="_blank" rel="noopener">✎ Design &amp; threat model</a>
+      <a href="https://github.com/aburan28/ecdlp-cost-challenge/blob/main/first_blood/README.md" target="_blank" rel="noopener">⚑ First-Blood board</a>
+    </div>
+    <p class="foot-note">A resource-cost cryptanalysis benchmark. The arena is the generic group model made executable — recover the discrete log in as few group operations as the math allows.</p>
+  </div>
+</footer>
+
+<script>
+  document.documentElement.classList.add('js'); // enable scroll-reveal; without JS, content shows by default
+  // mobile nav
+  var t=document.getElementById('navtoggle'),l=document.getElementById('navlinks');
+  t&&t.addEventListener('click',function(){l.classList.toggle('open')});
+  l&&l.addEventListener('click',function(e){if(e.target.tagName==='A')l.classList.remove('open')});
+  // scroll reveal
+  var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}})},{threshold:.12});
+  document.querySelectorAll('.reveal').forEach(function(el){io.observe(el)});
+</script>
+</body>
+</html>
