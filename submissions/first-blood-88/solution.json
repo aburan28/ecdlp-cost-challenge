@@ -1,0 +1,7 @@
+{
+  "instance": "instance_public_88.json",
+  "solver": "aburan28",
+  "method": "generic parallel-DP rho, 12 cores, ~15.2 h (1.569e13 steps, ~286M steps/s)",
+  "k": "119182292250672575868009920",
+  "date": "2026-06-08"
+}
