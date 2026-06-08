@@ -1,0 +1,81 @@
+name: score
+
+# Validate a solver submission's SPEEDUP automatically — no backend, no secret.
+#
+# Why this is safe without a secret seed:
+#   * The instance is derived from $ECDLP_SEED. A *committed* seed could be
+#     pre-solved offline (recover k, hardcode it, "win" in ~0 counted ops), which
+#     is the whole reason the official grader uses a per-round SECRET seed.
+#   * Here we instead mint a FRESH random seed at run time, AFTER the PR is fixed,
+#     so the contestant could not have pre-solved it. The oracle spawns the solver
+#     with a CLEARED environment (oracle.rs: env_clear) inside a sandbox, so the
+#     solver cannot read the seed or the instance at run time either — it must do
+#     the work through the counted oracle.
+#   * The candidate and the current best (main's src/solver) are scored on the
+#     SAME fresh seed — a paired, common-random-numbers comparison, so the verdict
+#     is fair and low-variance even at a small trial count.
+#   * No repo secret is used, so this runs safely on fork PRs.
+#
+# A PR is accepted only if it BEATS the current best on identical instances (the
+# ecdsa.fail rule). Make this a REQUIRED status check (with branch protection) to
+# enforce it; a PR that edits this file to weaken it then leaves a required check
+# missing -> merge blocked. The editable-paths guard in validate.yml still runs in
+# parallel and keeps the harness immutable.
+
+on:
+  pull_request:
+    paths: ['src/solver/**']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: score-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  speedup:
+    name: speedup (paired, fresh seed)
+    runs-on: ubuntu-latest
+    env:
+      ECDLP_BITS: "40"
+      ECDLP_TRIALS: "16"   # paired ⇒ low variance; bump for the official run
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: install bubblewrap (sandbox for the untrusted solver)
+        run: sudo apt-get update && sudo apt-get install -y bubblewrap
+      - name: allow unprivileged user namespaces (best effort)
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+      - name: setup
+        run: ./setup.sh
+      - name: mint a fresh seed (unknown when the PR was written ⇒ unforgeable)
+        run: |
+          python3 - <<'PY' >> "$GITHUB_ENV"
+          import secrets
+          print(f"ECDLP_SEED={secrets.randbelow(2**63)}")
+          print(f"ECDLP_TOKEN_SEED={secrets.randbelow(2**63)}")
+          PY
+      - name: score the submission on the fresh seed
+        run: |
+          ./benchmark.sh --note "ci submission ${{ github.sha }}"
+          cp score.json /tmp/candidate.json
+      - name: score the current best (main's solver) on the SAME seed
+        run: |
+          git fetch --no-tags --depth=1 origin main
+          git checkout FETCH_HEAD -- src/solver
+          ./benchmark.sh --note "ci current-best (main)"
+          cp score.json /tmp/best.json
+      - name: gate — the submission must beat the current best
+        run: python3 tools/beats_best.py --score /tmp/candidate.json --against-score /tmp/best.json
+      - name: summary
+        if: always()
+        run: |
+          {
+            echo "### Speedup gate (bits=$ECDLP_BITS, $ECDLP_TRIALS paired trials, fresh seed)"
+            echo '```'
+            python3 tools/beats_best.py --score /tmp/candidate.json --against-score /tmp/best.json 2>&1 || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

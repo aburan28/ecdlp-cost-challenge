@@ -75,29 +75,25 @@ strictly-improving frontier:
   the best `correct` run at the **same `bits`**; ties and invalid runs are rejected;
   the first run at a new tier is the inaugural record. Exit `0` = accept, `1` = reject.
 
-**Tier vs authority.** A fixed seed + fixed trial battery makes the score
-*deterministic* (`benchmark.sh`: "the same solver scores identically every run"),
-so this is a clean, non-flaky gate. The *official* `bits=40` promotion is still run
-by a maintainer with the sealed seed, who runs this same gate to decide. To enforce
-it in CI on solver PRs, add a job that re-runs the deterministic benchmark and gates
-the result (make it a *required* check, and trigger only when `src/solver/` changes,
-to fully mirror ecdsa.fail):
+**Automated scoring in CI — no secret, no backend.**
+[`.github/workflows/score.yml`](.github/workflows/score.yml) runs this gate on every
+`src/solver/` PR. It **mints a fresh random seed at run time**, scores the
+submission *and* the current best (`main`'s solver) on that **same seed**, and
+ACCEPTs only if the submission wins — a paired, common-random-numbers comparison.
 
-```yaml
-  beats-best:                         # add to .github/workflows/validate.yml
-    name: arena beats-best
-    needs: [build, guard]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with: { fetch-depth: 0 }
-      - run: ./setup.sh
-      - run: ECDLP_BITS=40 ./benchmark.sh --note "ci ${{ github.sha }}"
-      - name: gate against main's frontier
-        run: |
-          git show origin/main:results.tsv > /tmp/frontier.tsv
-          python3 tools/beats_best.py --score score.json --against /tmp/frontier.tsv
-```
+Why it's safe without a secret seed: a *committed* seed could be pre-solved offline
+(recover `k`, hardcode it, "win" in ~0 ops), which is why the official grader uses a
+per-round secret. A **fresh** seed minted after the PR is fixed can't be pre-solved,
+and the oracle runs the solver with a **cleared environment inside a sandbox**
+(`oracle.rs` `env_clear`), so it can't read the seed or instance at run time either —
+it must do the real work through the counted oracle. No repo secret is used, so this
+runs on **fork PRs**.
+
+Make `score.yml`'s `speedup` job a **required** status check (with branch protection)
+to enforce "a submission must beat the best," exactly like ecdsa.fail. The only thing
+the secret-seed *official grader* still adds is one fixed per-round seed shared across
+the whole field at once (with a post-round audit reveal); the CI gate instead pairs
+each submission against the incumbent, which is enough for a continuous frontier.
 
 ## What CI runs (`.github/workflows/validate.yml`)
 
