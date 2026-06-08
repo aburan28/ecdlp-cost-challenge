@@ -63,6 +63,71 @@ fn run_trial(mut oracle: Oracle, solver_bin: &str, wrap: &str) -> (bool, u64) {
     (oracle.finished && oracle.solved, oracle.count)
 }
 
+/// Integrity verdict on a finished, correct run (every trial returned a valid k).
+///
+/// `ops` are the per-trial op counts THIS trusted process charged — the sandboxed
+/// solver cannot influence them — so the spread we measure is authoritative.
+/// Shoup's generic lower bound makes √(n/2) (`shoup_floor`) a floor on the
+/// *expected* op count of any representation-blind algorithm; a re-derived mean
+/// below it cannot mean someone broke the bound, only that the meter under-counted
+/// (a harness bug or an off-meter exploit). rho's collision time scatters
+/// (CV ≈ 0.52), so we hard-reject (`publishable = false`) only when the whole
+/// one-sided confidence band on the mean sits below the floor — which needs ≥ 2
+/// trials to estimate the spread. The gap between the floor and the negation
+/// birthday bound √(πn/4) (`neg_bound`, the best any known generic *walk* averages)
+/// is open territory: we keep it publishable but return a loud note asking for
+/// fresh-seed reproduction before it goes on the board.
+fn floor_verdict(ops: &[u64], shoup_floor: u64, neg_bound: f64, rho_ref: u64) -> (bool, String) {
+    const Z_HARD: f64 = 3.0; // one-sided ≈ 99.9%: don't false-accuse a lucky run
+    if ops.is_empty() {
+        return (true, String::new());
+    }
+    let k = ops.len() as f64;
+    let mean = ops.iter().map(|&o| o as f64).sum::<f64>() / k;
+    let mean_ops = (ops.iter().map(|&o| o as u128).sum::<u128>() / ops.len() as u128) as u64;
+    let ratio = mean / rho_ref as f64;
+    let sem = if ops.len() >= 2 {
+        let var = ops
+            .iter()
+            .map(|&o| (o as f64 - mean) * (o as f64 - mean))
+            .sum::<f64>()
+            / (k - 1.0);
+        (var / k).sqrt()
+    } else {
+        f64::INFINITY // a single trial gives no spread estimate ⇒ never hard-reject
+    };
+    if mean + Z_HARD * sem < shoup_floor as f64 {
+        return (
+            false,
+            format!(
+                "re-derived mean {mean_ops} ({ratio:.4}×rho) is below the Shoup floor √(n/2)={shoup_floor} by >{z}σ over {nt} trials (sem={sem:.0}); a generic solver cannot average below √(n/2) — the meter under-counted (harness bug or off-meter exploit)",
+                z = Z_HARD as u64,
+                nt = ops.len(),
+            ),
+        );
+    }
+    if mean < shoup_floor as f64 {
+        return (
+            true,
+            format!(
+                "mean {mean_ops} is below the √(n/2)={shoup_floor} floor but within sampling noise over {nt} trial(s) — rerun with more trials before treating it as a record",
+                nt = ops.len(),
+            ),
+        );
+    }
+    if mean < neg_bound {
+        return (
+            true,
+            format!(
+                "mean {mean_ops} ({ratio:.4}×rho) beats the negation birthday bound √(πn/4)={neg:.0} ({nr:.4}×rho), the best any known generic walk averages — reproduce with a fresh secret seed before publishing",
+                neg = neg_bound,
+                nr = neg_bound / rho_ref as f64,
+            ),
+        );
+    }
+    (true, String::new())
+}
+
 fn main() {
     // ---- note from CLI (e.g. `--note "tried Brent"`) -------------------------
     let mut note = String::new();
@@ -115,6 +180,7 @@ fn main() {
     let trials = env_u64("ECDLP_TRIALS").unwrap_or(1).max(1);
 
     let mut sum_ops: u128 = 0;
+    let mut ops_per_trial: Vec<u64> = Vec::with_capacity(trials as usize);
     let mut all_ok = true;
     for t in 0..trials {
         let token_seed = base_token_seed.wrapping_add(t.wrapping_mul(0x9E37_79B9_7F4A_7C15));
@@ -129,6 +195,7 @@ fn main() {
         );
         all_ok &= ok;
         sum_ops += ops as u128;
+        ops_per_trial.push(ops);
         if !ok {
             break;
         }
@@ -150,7 +217,19 @@ fn main() {
         0.0
     };
 
-    let score_json = if correct {
+    // ---- integrity gate (trusted): refuse to bless a sub-floor "record" -------
+    // No representation-blind solver can average below √(n/2) (Shoup). The ops are
+    // counted by THIS process, so the spread is authoritative, and a src/solver-only
+    // PR cannot reach this code (the editable-paths guard blocks it). See
+    // floor_verdict() for the statistics; `publishable=false` voids the score.
+    let neg_bound = (std::f64::consts::PI * n as f64).sqrt() / 2.0; // √(πn/4) ≈ 0.71×rho
+    let (publishable, integrity_note) = if correct {
+        floor_verdict(&ops_per_trial, shoup_floor, neg_bound, rho_ref)
+    } else {
+        (false, String::new())
+    };
+
+    let score_json = if publishable {
         format!(
             concat!(
                 "{{\n",
@@ -181,9 +260,43 @@ fn main() {
             iseed = seed,
             tseed = base_token_seed,
         )
-    } else {
+    } else if !correct {
         format!(
             "{{\n  \"score\": null,\n  \"metrics\": {{ \"correct\": false, \"group_ops\": {count} }}\n}}\n"
+        )
+    } else {
+        // Valid k, but the re-derived mean is below the Shoup floor — void it so a
+        // meter bug or off-meter exploit can never masquerade as a broken bound.
+        format!(
+            concat!(
+                "{{\n",
+                "  \"score\": null,\n",
+                "  \"metrics\": {{\n",
+                "    \"correct\": true,\n",
+                "    \"rejected\": \"below_shoup_floor\",\n",
+                "    \"group_ops\": {ops},\n",
+                "    \"bits\": {bits},\n",
+                "    \"n\": {n},\n",
+                "    \"rho_reference\": {rho},\n",
+                "    \"shoup_floor\": {floor},\n",
+                "    \"ratio_to_rho\": {ratio:.4},\n",
+                "    \"trials\": {trials},\n",
+                "    \"instance_seed\": {iseed},\n",
+                "    \"token_seed_base\": {tseed},\n",
+                "    \"reason\": \"{reason}\"\n",
+                "  }}\n",
+                "}}\n"
+            ),
+            ops = count,
+            bits = bits,
+            n = n,
+            rho = rho_ref,
+            floor = shoup_floor,
+            ratio = ratio,
+            trials = trials,
+            iseed = seed,
+            tseed = base_token_seed,
+            reason = integrity_note,
         )
     };
     let _ = fs::write("score.json", &score_json);
@@ -205,8 +318,14 @@ fn main() {
         bits = bits,
         rho = rho_ref,
         ratio = ratio,
-        ok = if correct { "OK" } else { "FAIL" },
-        note = note.replace('\t', " ").replace('\n', " "),
+        ok = if publishable { "OK" } else { "FAIL" },
+        note = if integrity_note.is_empty() {
+            note.replace('\t', " ").replace('\n', " ")
+        } else {
+            format!("{note} [{integrity_note}]")
+                .replace('\t', " ")
+                .replace('\n', " ")
+        },
         iseed = seed,
         tseed = base_token_seed,
         trials = trials,
@@ -219,12 +338,76 @@ fn main() {
     }
 
     // Console summary.
-    if correct {
+    if publishable {
         eprintln!(
             "[oracle] SOLVED  n=2^{bits}  mean_group_ops={count} (over {trials} trial(s))  rho_ref={rho_ref}  ratio={ratio:.3}×rho  (E[floor] √(n/2)={shoup_floor})"
         );
-    } else {
+        if !integrity_note.is_empty() {
+            eprintln!("[oracle] ⚠ FLAG: {integrity_note}");
+        }
+    } else if !correct {
         eprintln!("[oracle] FAILED  (solver did not return a valid k)  group_ops={count}");
         std::process::exit(1);
+    } else {
+        eprintln!(
+            "[oracle] REJECTED (integrity)  {integrity_note}.\n          A generic solver cannot average below √(n/2); this is a meter bug or an off-meter exploit, not a record."
+        );
+        std::process::exit(2);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::floor_verdict;
+
+    // bits=40 sample tier (see main()): rho_ref = round(1.2533·√n),
+    // shoup_floor = ⌊√(n/2)⌋ ≈ 0.56×rho, neg_bound = √(πn/4) ≈ 0.71×rho.
+    const RHO_REF: u64 = 984_377;
+    const FLOOR: u64 = 555_375;
+    const NEG_BOUND: f64 = 696_059.0;
+
+    #[test]
+    fn ordinary_score_is_publishable_and_silent() {
+        // shipped negation-map rho ≈ 0.80×, comfortably above both bounds
+        let (ok, note) = floor_verdict(&[788_034; 8], FLOOR, NEG_BOUND, RHO_REF);
+        assert!(ok);
+        assert!(note.is_empty(), "unexpected note: {note}");
+    }
+
+    #[test]
+    fn below_neg_bound_is_flagged_but_publishable() {
+        // 0.62×: above the floor, below the birthday bound ⇒ soft flag, still valid
+        let (ok, note) = floor_verdict(&[612_655; 8], FLOOR, NEG_BOUND, RHO_REF);
+        assert!(ok);
+        assert!(note.contains("birthday"), "expected soft flag, got: {note:?}");
+    }
+
+    #[test]
+    fn consistent_sub_floor_mean_is_rejected() {
+        // a steady sub-floor mean is impossible for a generic solver ⇒ void it
+        let (ok, note) = floor_verdict(&[200_000; 8], FLOOR, NEG_BOUND, RHO_REF);
+        assert!(!ok);
+        assert!(note.contains("Shoup floor"), "got: {note:?}");
+    }
+
+    #[test]
+    fn single_sub_floor_run_is_not_rejected() {
+        // one lucky run can dip below the floor (rho variance) — never a reject
+        let (ok, note) = floor_verdict(&[400_000], FLOOR, NEG_BOUND, RHO_REF);
+        assert!(ok);
+        assert!(note.contains("sampling noise"), "got: {note:?}");
+    }
+
+    #[test]
+    fn high_variance_sub_floor_mean_is_not_false_accused() {
+        // mean dips below the floor but the spread straddles it ⇒ band overlaps the
+        // floor ⇒ not hard-rejected (we only void when the WHOLE band is below it)
+        let (ok, _note) = floor_verdict(
+            &[120_000, 980_000, 130_000, 950_000, 110_000, 990_000],
+            FLOOR,
+            NEG_BOUND,
+            RHO_REF,
+        );
+        assert!(ok);
     }
 }
