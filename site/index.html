@@ -238,10 +238,12 @@
     </div>
 
     <div class="stats">
-      <div class="stat"><div class="v gold">0.72×</div><div class="k">current record · ÷ rho</div></div>
+      <!-- BUILD:arena-stats (generated from site/arena.json + results.tsv by site/build.py — do not edit by hand) -->
+      <div class="stat"><div class="v gold">0.80×</div><div class="k">current record · ÷ rho</div></div>
       <div class="stat"><div class="v">0.71×</div><div class="k">negation-map optimum</div></div>
       <div class="stat"><div class="v">0.56×</div><div class="k">generic floor √(n/2)</div></div>
       <div class="stat"><div class="v">bits = 40</div><div class="k">official tier</div></div>
+<!-- /BUILD:arena-stats -->
     </div>
   </div>
 </section>
@@ -278,7 +280,7 @@
 <span class="c-prompt">solver ▸</span> <span class="c-cmd">add_batch</span>(<span class="c-dim">64 parallel walks</span>) → <span class="c-tok">64 tokens</span>    <span class="c-cost">[ +64   ]</span>
 <span class="c-com">          … distinguished-point negation-map rho …</span>
 <span class="c-prompt">solver ▸</span> <span class="c-cmd">submit</span>(<span class="c-tok">k</span>)
-<span class="c-prompt">oracle ▸</span> <span class="c-ok">k·P == Q  ✓</span>   score = <span class="c-cost">708,536</span> group ops   <span class="c-com">(0.72× rho)</span></pre>
+<span class="c-prompt">oracle ▸</span> <span class="c-ok">k·P == Q  ✓</span>   score = <!--BUILD:arena-demo--><span class="c-cost">788,034</span> group ops   <span class="c-com">(0.80× rho)</span><!--/BUILD:arena-demo--></pre>
     </div>
 
     <div class="note"><b>No loopholes.</b> Tokens are an 8-round Feistel permutation of the point, re-keyed every run — you can only name elements you reached through counted queries. The counter lives in a separate trusted process; the solver is sandboxed with no network and no filesystem writes; the secret seed is fresh and never revealed. You cannot under-report, pre-seed, replay, or read the answer off disk.</div>
@@ -294,48 +296,44 @@
 
     <div class="lb">
       <div class="lb-row lb-head"><div class="rank">#</div><div class="name">Method</div><div class="ops">group ops</div><div class="ratio">÷ rho</div></div>
-
+      <!-- BUILD:arena-beat (generated from site/arena.json + results.tsv by site/build.py — do not edit by hand) -->
       <div class="lb-row">
         <div class="rank mono">—</div>
-        <div class="name">Generic floor <small>√(n/2) · Shoup bound on the expected score</small></div>
+        <div class="name">Generic floor<small>√(n/2) · Shoup bound on the expected score</small></div>
         <div class="ops">555,375</div><div class="ratio r-floor">0.56×</div>
-        <div class="bar"><i style="width:36%;background:var(--cyan)"></i></div>
+        <div class="bar"><i style="width:35%;background:var(--cyan)"></i></div>
       </div>
-
       <div class="lb-row">
         <div class="rank mono">★</div>
-        <div class="name">Negation-map rho optimum <small>√(πn/4) · best the √2 walk can do</small></div>
-        <div class="ops">696,061</div><div class="ratio r-good">0.71×</div>
-        <div class="bar"><i style="width:45%;background:var(--accent-dim)"></i></div>
+        <div class="name">Negation-map rho optimum<small>√(πn/4) · best the √2 walk can do</small></div>
+        <div class="ops">696,059</div><div class="ratio r-good">0.71×</div>
+        <div class="bar"><i style="width:44%;background:var(--accent-dim)"></i></div>
       </div>
-
       <div class="lb-row best">
         <div class="rank mono">1</div>
-        <div class="name">Negation-map DP rho <span class="tag-best">RECORD</span><small>cheap jump table · small W · large R · DP-free-cycle escape</small></div>
-        <div class="ops">708,536</div><div class="ratio">0.72×</div>
-        <div class="bar"><i style="width:46%;background:var(--gold)"></i></div>
+        <div class="name">negation-map rho <span class="tag-best">RECORD</span><small>negation-map rho — sqrt(2) speedup over baseline (8-trial mean)</small></div>
+        <div class="ops">788,034</div><div class="ratio">0.80×</div>
+        <div class="bar"><i style="width:50%;background:var(--gold)"></i></div>
       </div>
-
       <div class="lb-row">
         <div class="rank mono">—</div>
-        <div class="name">Pollard-rho optimum <small>√(πn/2) · the reference, 1.00×</small></div>
+        <div class="name">Pollard-rho optimum<small>√(πn/2) · the reference, 1.00×</small></div>
         <div class="ops">984,377</div><div class="ratio r-ref">1.00×</div>
-        <div class="bar"><i style="width:64%;background:var(--muted)"></i></div>
+        <div class="bar"><i style="width:63%;background:var(--muted)"></i></div>
       </div>
-
       <div class="lb-row">
         <div class="rank mono">—</div>
-        <div class="name">Plain parallel-DP rho <small>the √2 baseline, no negation map</small></div>
+        <div class="name">parallel-DP rho<small>baseline: parallel-DP rho (8-trial mean)</small></div>
         <div class="ops">1,356,674</div><div class="ratio r-bad">1.38×</div>
-        <div class="bar"><i style="width:88%;background:var(--fail)"></i></div>
+        <div class="bar"><i style="width:86%;background:var(--fail)"></i></div>
       </div>
-
       <div class="lb-row">
         <div class="rank mono">—</div>
-        <div class="name">Baby-step giant-step <small>deterministic, but needs √n memory</small></div>
+        <div class="name">Baby-step giant-step<small>deterministic, but needs √n memory</small></div>
         <div class="ops">1,570,838</div><div class="ratio r-bad">1.60×</div>
         <div class="bar"><i style="width:100%;background:var(--fail)"></i></div>
       </div>
+<!-- /BUILD:arena-beat -->
     </div>
     <p class="muted" style="font-size:13.5px;margin-top:14px">Tier <span class="mono">bits = 40</span> · <span class="mono">n = 616,882,790,773</span> · <span class="mono">rho_ref = 984,377</span>. Scores are means over trials; a single run can dip below the floor by luck — which is exactly why the leaderboard quantity is the mean.</p>
   </div>
@@ -350,53 +348,42 @@
 
     <div class="chartcard">
       <h3>Trajectory · ÷ rho (lower is better)</h3>
-      <p>parallel-DP rho → negation-map rho → tuned negation-map DP rho</p>
-      <svg viewBox="0 0 620 270" width="100%" role="img" aria-label="Score trajectory chart descending from 1.38x to 0.72x toward the 0.71x optimum">
-        <!-- y reference lines: ratio→y mapping over [0.50..1.45] -> [240..40] -->
-        <!-- rho 1.00 -->
+      <p>each committed run is a constant-factor step down · ÷ rho, lower is better</p>
+      <svg viewBox="0 0 620 270" width="100%" role="img" aria-label="Score trajectory ÷ rho — the descent of measured runs toward the negation-map optimum">
+        <!-- BUILD:arena-trajectory (generated from site/arena.json + results.tsv by site/build.py — do not edit by hand) -->
         <line class="ref" x1="60" y1="134.7" x2="600" y2="134.7" stroke="#97a1b2"/>
-        <text x="600" y="130" text-anchor="end" font-size="11">1.00× rho</text>
-        <!-- optimum 0.707 -->
+        <text x="600" y="130.7" text-anchor="end" font-size="11">1.00× rho</text>
         <line class="ref" x1="60" y1="196.4" x2="600" y2="196.4" stroke="#4ade80"/>
-        <text x="600" y="192" text-anchor="end" font-size="11" fill="#4ade80">0.71× optimum</text>
-        <!-- floor 0.564 -->
+        <text x="600" y="192.4" text-anchor="end" font-size="11" fill="#4ade80">0.71× optimum</text>
         <line class="ref" x1="60" y1="226.5" x2="600" y2="226.5" stroke="#38bdf8"/>
-        <text x="600" y="222" text-anchor="end" font-size="11" fill="#38bdf8">0.56× floor</text>
-        <!-- axes -->
+        <text x="600" y="222.5" text-anchor="end" font-size="11" fill="#38bdf8">0.56× floor</text>
         <line class="axis" x1="60" y1="40" x2="60" y2="248"/>
         <line class="axis" x1="60" y1="248" x2="600" y2="248"/>
-        <!-- descent polyline: (120,55.2)-(330,176.8)-(520,193.7) -->
-        <polyline points="120,55.2 330,176.8 520,193.7" fill="none" stroke="#f5b941" stroke-width="2.5"/>
-        <circle cx="120" cy="55.2" r="5.5" fill="#f87171"/>
-        <circle cx="330" cy="176.8" r="5.5" fill="#e7eaf0"/>
-        <circle cx="520" cy="193.7" r="6.5" fill="#f5b941"/>
-        <!-- point labels -->
-        <text x="120" y="42" text-anchor="middle" font-size="12" fill="#f87171">1.38×</text>
-        <text x="120" y="266" text-anchor="middle" font-size="10.5">parallel-DP</text>
-        <text x="330" y="166" text-anchor="middle" font-size="12" fill="#e7eaf0">0.80×</text>
-        <text x="330" y="266" text-anchor="middle" font-size="10.5">negation-map</text>
-        <text x="520" y="183" text-anchor="middle" font-size="12" fill="#f5b941">0.72×</text>
-        <text x="520" y="266" text-anchor="middle" font-size="10.5" fill="#f5b941">tuned · RECORD</text>
+        <polyline points="120.0,55.1 520.0,176.7" fill="none" stroke="#f5b941" stroke-width="2.5"/>
+        <circle cx="120.0" cy="55.1" r="5.5" fill="#f87171"/>
+        <circle cx="520.0" cy="176.7" r="6.5" fill="#f5b941"/>
+        <text x="120.0" y="43.1" text-anchor="middle" font-size="12" fill="#f87171">1.38×</text>
+        <text x="120.0" y="266" text-anchor="middle" font-size="10.5">parallel-DP rho</text>
+        <text x="520.0" y="164.7" text-anchor="middle" font-size="12" fill="#f5b941">0.80×</text>
+        <text x="520.0" y="266" text-anchor="middle" font-size="10.5" fill="#f5b941">negation-map rho</text>
+<!-- /BUILD:arena-trajectory -->
       </svg>
     </div>
 
     <div class="lb" style="margin-top:18px">
       <div class="lb-row lb-head"><div class="rank">#</div><div class="name">Submission</div><div class="ops">mean ops</div><div class="ratio">÷ rho</div></div>
+      <!-- BUILD:arena-history (generated from results.tsv by site/build.py — do not edit by hand) -->
       <div class="lb-row best">
         <div class="rank mono">1</div>
-        <div class="name">neg-map DP rho — cheap table · small W · large R <span class="tag-best">BEST</span><small>32-trial mean · within 2% of the theoretical optimum</small></div>
-        <div class="ops">708,536</div><div class="ratio">0.72×</div>
+        <div class="name">negation-map rho <span class="tag-best">BEST</span><small>negation-map rho — sqrt(2) speedup over baseline (8-trial mean)</small></div>
+        <div class="ops">788,034</div><div class="ratio">0.80×</div>
       </div>
       <div class="lb-row">
         <div class="rank mono">2</div>
-        <div class="name">negation-map rho <small>√2 speedup over the plain baseline</small></div>
-        <div class="ops">788,034</div><div class="ratio r-ref">0.80×</div>
-      </div>
-      <div class="lb-row">
-        <div class="rank mono">3</div>
-        <div class="name">parallel-DP rho <small>the starting point</small></div>
+        <div class="name">parallel-DP rho<small>baseline: parallel-DP rho (8-trial mean)</small></div>
         <div class="ops">1,356,674</div><div class="ratio r-bad">1.38×</div>
       </div>
+<!-- /BUILD:arena-history -->
     </div>
   </div>
 </section>
