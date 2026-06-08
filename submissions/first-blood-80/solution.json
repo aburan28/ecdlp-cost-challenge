@@ -1,0 +1,7 @@
+{
+  "instance": "instance_public_80.json",
+  "solver": "aburan28",
+  "method": "generic parallel-DP rho, 12 cores, ~36 min",
+  "k": "405306096300473350288613",
+  "date": "2026-06-07"
+}

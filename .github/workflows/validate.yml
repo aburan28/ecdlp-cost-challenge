@@ -138,14 +138,14 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
   firstblood:
-    name: first-blood proofs
+    name: first-blood submissions
     runs-on: ubuntu-latest
-    # No untrusted code runs here — it's a pure scalar-mult re-check of every
-    # claimed solve in first_blood/status.json. A PR (or a push to main) that
-    # marks an instance "solved" with a missing or wrong k fails this check, so
-    # the board can never show SOLVED without a real, re-verifiable break. Mark
-    # this a REQUIRED status check on main for it to actually block a merge.
+    # Validates contestant first-blood solves. No untrusted code runs here — it is
+    # a pure scalar-mult re-check of every submissions/**/solution.json (k·G == Q).
+    # A PR that adds a solve with a missing/wrong k, or one pointing at an unknown
+    # instance, fails this check, so the board can never show SOLVED without a real,
+    # re-verifiable break. Mark this a REQUIRED status check on main to block merges.
     steps:
       - uses: actions/checkout@v4
-      - name: verify every claimed solve (k·G == Q)
+      - name: verify every submitted solve (k·G == Q)
         run: python3 site/build.py --verify

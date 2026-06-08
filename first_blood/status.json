@@ -1,32 +1,11 @@
 {
-  "_comment": "Canonical state of the First-Blood board. This is the SINGLE SOURCE OF TRUTH. On a solve: set status to \"solved\" and fill solver/method/writeup AND the recovered \"k\" (as a decimal string), then run `python3 site/build.py` (CI also runs it on deploy). A \"solved\" entry is REJECTED unless k actually recovers the log (k·G == Q on its instance) — the generator and CI both re-verify it, so a claimed solve cannot reach the board without a real, re-checkable proof. The generator regenerates the board in site/index.html AND the table in first_blood/README.md from this file, so they can never drift. status is \"open\" or \"solved\".",
+  "_comment": "Board MANIFEST for the First-Blood track: the challenge instances (file + bits) in display order, plus repo/branch for writeup links. Solves are NOT recorded here. A contestant submits submissions/<dir>/solution.json with the recovered k; CI verifies k·G == Q and site/build.py promotes that instance to SOLVED on the board automatically. To post a NEW challenge, add its instance_public_<bits>.json and an entry here. See first_blood/README.md -> 'Submitting a solve'.",
   "repo": "aburan28/ecdlp-cost-challenge",
   "branch": "main",
   "instances": [
-    {
-      "file": "instance_public_80.json",
-      "bits": 80,
-      "status": "solved",
-      "solver": "aburan28",
-      "method": "generic parallel-DP rho, 12 cores, ~36 min",
-      "writeup": "submissions/first-blood-80/WRITEUP.md",
-      "k": "405306096300473350288613",
-      "date": "2026-06-08"
-    },
-    {
-      "file": "instance_public_96.json",
-      "bits": 96,
-      "status": "open"
-    },
-    {
-      "file": "instance_public_112.json",
-      "bits": 112,
-      "status": "open"
-    },
-    {
-      "file": "instance_public_128.json",
-      "bits": 128,
-      "status": "open"
-    }
+    { "file": "instance_public_80.json", "bits": 80 },
+    { "file": "instance_public_96.json", "bits": 96 },
+    { "file": "instance_public_112.json", "bits": 112 },
+    { "file": "instance_public_128.json", "bits": 128 }
   ]
 }

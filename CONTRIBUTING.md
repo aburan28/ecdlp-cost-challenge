@@ -1,7 +1,15 @@
 # Contributing — submitting a solver
 
-This repo doubles as a self-hosted submission platform: you submit a better solver
-as a **pull request**, and CI validates it.
+This repo doubles as a self-hosted submission platform: you submit as a **pull
+request**, and CI validates it. There are **two tracks**:
+
+- **Beat rho** (this guide) — a faster *generic* solver. Edit only `src/solver/`;
+  CI re-derives your score in a sandbox.
+- **First-Blood** — recover `k` for a published curve by *any* method. Add a
+  `submissions/first-blood-<bits>/solution.json` + a writeup; the `first-blood
+  submissions` CI job re-checks `k·G == Q` and, on merge, the board promotes you to
+  first solver. See [`submissions/README.md`](submissions/README.md) and
+  [`first_blood/README.md`](first_blood/README.md).
 
 ## The rule that matters
 
