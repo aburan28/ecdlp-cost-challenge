@@ -19,7 +19,7 @@ genuine challenge, self-verified by `k·G == Q`.
 
 | File | Field size | Status | First solver |
 |---|---:|---|---|
-| `instance_public_80.json`  | 80-bit  | 🟢 OPEN | — |
+| `instance_public_80.json`  | 80-bit  | 🔴 SOLVED | **aburan28** — generic parallel-DP rho, 12 cores, ~36 min ([writeup](../submissions/first-blood-80/WRITEUP.md)) |
 | `instance_public_96.json`  | 96-bit  | 🟢 OPEN | — |
 | `instance_public_112.json` | 112-bit | 🟢 OPEN | — |
 | `instance_public_128.json` | 128-bit | 🟢 OPEN | — |
