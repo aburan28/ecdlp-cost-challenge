@@ -57,6 +57,48 @@ label to bypass it.)
   quantity. See `README.md` for the reference numbers (rho optimum, the `√(n/2)`
   floor with free negation, etc.).
 
+## Promotion: the beats-best gate (prototype)
+
+Borrowed from [ecdsa.fail](https://ecdsa.fail), whose backend promotes a
+submission **only if it beats the current best**. [`tools/beats_best.py`](tools/beats_best.py)
+brings that rule here, turning `results.tsv` from an open log into a
+strictly-improving frontier:
+
+- `./benchmark.sh` prints a verdict after each run — **ACCEPT** (your mean beats
+  the committed record for the tier) or **REJECT** (it doesn't) — so you know
+  before submitting whether the run is promotion-worthy. Run it standalone too:
+  ```bash
+  python3 tools/beats_best.py --score score.json --against results.tsv
+  python3 tools/beats_best.py --against <(git show origin/main:results.tsv)   # vs the promoted frontier
+  ```
+- **Rule:** a candidate is accepted iff its `group_ops` is **strictly lower** than
+  the best `correct` run at the **same `bits`**; ties and invalid runs are rejected;
+  the first run at a new tier is the inaugural record. Exit `0` = accept, `1` = reject.
+
+**Tier vs authority.** A fixed seed + fixed trial battery makes the score
+*deterministic* (`benchmark.sh`: "the same solver scores identically every run"),
+so this is a clean, non-flaky gate. The *official* `bits=40` promotion is still run
+by a maintainer with the sealed seed, who runs this same gate to decide. To enforce
+it in CI on solver PRs, add a job that re-runs the deterministic benchmark and gates
+the result (make it a *required* check, and trigger only when `src/solver/` changes,
+to fully mirror ecdsa.fail):
+
+```yaml
+  beats-best:                         # add to .github/workflows/validate.yml
+    name: arena beats-best
+    needs: [build, guard]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - run: ./setup.sh
+      - run: ECDLP_BITS=40 ./benchmark.sh --note "ci ${{ github.sha }}"
+      - name: gate against main's frontier
+        run: |
+          git show origin/main:results.tsv > /tmp/frontier.tsv
+          python3 tools/beats_best.py --score score.json --against /tmp/frontier.tsv
+```
+
 ## What CI runs (`.github/workflows/validate.yml`)
 
 | Check | Blocks merge | What it proves |
