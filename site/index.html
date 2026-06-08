@@ -180,6 +180,24 @@
   .foot-links a:hover{color:var(--accent)}
   .foot-note{color:var(--faint);font-size:13px;max-width:600px;margin:0 auto}
 
+  /* hero two-track teaser */
+  .tracks{margin:24px auto 0;max-width:700px;font-size:15.5px;color:var(--muted)}
+  .tracks a{color:var(--text);text-decoration:none;border-bottom:1px solid var(--border);white-space:nowrap}
+  .tracks a:hover{color:var(--accent);border-color:var(--accent)}
+
+  /* the √n wall */
+  .timeline{display:flex;flex-wrap:wrap;gap:12px;margin-top:34px}
+  .tl{flex:1 1 200px;border:1px solid var(--border);border-radius:12px;background:var(--bg-elev);padding:16px 18px}
+  .tl .yr{font-family:var(--mono);color:var(--accent);font-size:13px;font-weight:700}
+  .tl .ev{font-weight:600;margin:6px 0 3px;font-size:15px}
+  .tl .dt{color:var(--muted);font-size:13px}
+  .bigcallout{margin-top:32px;border:1px solid var(--accent-dim);border-radius:16px;
+    background:linear-gradient(180deg,rgba(74,222,128,.09),rgba(74,222,128,.015));padding:30px}
+  .bigcallout h3{margin:0 0 12px;font-size:23px}
+  .bigcallout p{margin:0 0 12px;color:var(--text);font-size:16px}
+  .bigcallout .punch{font-family:var(--mono);font-size:clamp(19px,3vw,29px);font-weight:700;color:var(--accent);margin:20px 0 8px;line-height:1.3}
+  .bigcallout .sub{color:var(--muted);font-size:15px;margin:0}
+
   /* fade-in only when JS is present, so content is never hidden without it */
   .js .reveal{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
   .js .reveal.in{opacity:1;transform:none}
@@ -207,9 +225,9 @@
     <nav class="nav-links" id="navlinks">
       <a href="#how">How it works</a>
       <a href="#beat">Beat rho</a>
-      <a href="#leaderboard">Leaderboard</a>
+      <a href="#wall">The √n wall</a>
       <a href="#participate">Participate</a>
-      <a href="#firstblood">First blood</a>
+      <a href="#firstblood">Break √n</a>
       <a class="ghub" href="https://github.com/aburan28/ecdlp-cost-challenge" target="_blank" rel="noopener">GitHub ↗</a>
     </nav>
     <button class="navtoggle" id="navtoggle" aria-label="Menu">≡</button>
@@ -237,6 +255,10 @@
       <div class="stat"><div class="v">0.56×</div><div class="k">generic floor √(n/2)</div></div>
       <div class="stat"><div class="v">bits = 40</div><div class="k">official tier</div></div>
     </div>
+
+    <p class="tracks">Two ways to play —
+      <a href="#beat">① shave the constant off rho</a> (scored, below) &nbsp;·&nbsp;
+      <a href="#firstblood">② beat √n itself</a> — unbeaten since 1978, the real prize.</p>
   </div>
 </section>
 
@@ -395,6 +417,30 @@
   </div>
 </section>
 
+<!-- THE √n WALL -->
+<section id="wall">
+  <div class="wrap reveal">
+    <p class="seclabel">The open problem</p>
+    <h2>Pollard's rho has stood since 1978</h2>
+    <p class="lead">For an elliptic curve over a <b>prime field</b> with no special structure, <b>no algorithm has ever beaten Pollard's rho.</b> Across nearly five decades — the negation map, distinguished points, Teske's r-adding walks, Gaudry–Schost — every advance has shaved the <em>constant</em>. The exponent has not moved. <span class="mono">√n</span> is still the wall.</p>
+    <p class="lead" style="margin-top:14px">And it is not one method falling short. The generic-group lower bound (Nechaev 1994, Shoup 1997) proves that <em>any</em> black-box algorithm needs <span class="mono">Ω(√n)</span> — so inside the scored arena, rho is already essentially optimal. Index calculus shatters discrete logs over extension fields and many special curves, yet generic prime-field curves have resisted it completely.</p>
+
+    <div class="timeline">
+      <div class="tl"><div class="yr">1978</div><div class="ev">Pollard's rho</div><div class="dt">√(πn/2) ≈ 1.25·√n — still the state of the art.</div></div>
+      <div class="tl"><div class="yr">1994 · 1997</div><div class="ev">Nechaev · Shoup</div><div class="dt">Generic lower bound Ω(√n): rho is optimal among black-box methods.</div></div>
+      <div class="tl"><div class="yr">1998 →</div><div class="ev">neg map · DP · Teske</div><div class="dt">Constant-factor speedups only. Same √n exponent.</div></div>
+      <div class="tl"><div class="yr">today</div><div class="ev">prime-field ECDLP</div><div class="dt">No sub-√n attack known. The barrier holds.</div></div>
+    </div>
+
+    <div class="bigcallout">
+      <h3>So don't just speed up rho.</h3>
+      <p>The leaderboard above is a warm-up. Driving rho from 1.38× down toward 0.71× is real engineering — but it is still rho, and that arena is provably floored at <span class="mono">√n</span>. The result this benchmark actually exists for is the other kind entirely:</p>
+      <p class="punch">→ recover k in fewer than √n operations<br>on a generic prime-field curve.</p>
+      <p class="sub">That has never been done. If you can — even at toy size, even by exploiting the published representation — it is a genuine discovery, not a tuning win. The <a href="#firstblood">First-Blood board</a> is where it lands.</p>
+    </div>
+  </div>
+</section>
+
 <!-- PARTICIPATE -->
 <section id="participate">
   <div class="wrap reveal">
@@ -422,16 +468,16 @@
       <div class="tier"><div class="lvl">ECDLP_BITS=48</div><div class="nm">Stretch</div><div class="ds">~1–2 min. Binary batched protocol keeps it fast.</div></div>
     </div>
 
-    <div class="note" style="margin-top:28px">Where to push next: tune the distinguished-point rate <b>θ</b> and walk count <b>W</b> toward the 0.71× optimum, build a better r-adding walk (<b>Teske</b>), or try <b>Gaudry–Schost</b> — all constant-factor moves above the <span class="mono">√(n/2)</span> floor. The shipped solver already ships a negation-map distinguished-point rho; beat it.</div>
+    <div class="note" style="margin-top:28px">Constant-factor moves to climb the leaderboard: tune the distinguished-point rate <b>θ</b> and walk count <b>W</b> toward the 0.71× optimum, build a better r-adding walk (<b>Teske</b>), or try <b>Gaudry–Schost</b>. But these all live above the <span class="mono">√(n/2)</span> floor — they are still rho. The shipped solver already ships a tuned negation-map distinguished-point rho; beat it if you like, then aim past the wall: <a href="#firstblood" style="color:var(--accent)">break √n</a>.</div>
   </div>
 </section>
 
 <!-- FIRST BLOOD -->
 <section id="firstblood">
   <div class="wrap reveal">
-    <p class="seclabel">The other half</p>
-    <h2>First-Blood board — the representation track</h2>
-    <p class="lead">The scored arena hides the curve, so it can only measure <em>generic</em> algorithms, where <span class="mono">√n</span> is a proven floor. This board is the opposite half: it publishes the <b>full curve</b> <span class="mono">(p, a, b, G, Q)</span> and dares you to recover <code>k</code> by <em>any</em> method — generic or not. <code>k</code> was generated at random and discarded; nobody knows it.</p>
+    <p class="seclabel">The real prize</p>
+    <h2>Break √n — the First-Blood board</h2>
+    <p class="lead">This is the half that matters. The scored arena hides the curve, so it can only measure <em>generic</em> algorithms, where <span class="mono">√n</span> is a proven floor. This board does the opposite: it publishes the <b>full curve</b> <span class="mono">(p, a, b, G, Q)</span> and dares you to recover <code>k</code> by <em>any</em> method — generic or not, by exploiting structure no generic algorithm can see. <code>k</code> was generated at random and discarded; nobody knows it.</p>
 
     <div class="lb">
       <div class="fb-row fb-head"><div>Instance</div><div>Field</div><div>Status</div><div class="who">First solver</div></div>
