@@ -35,11 +35,23 @@ and triggers on `first_blood/**` and `submissions/**`, so when a contestant's so
 merges, the site redeploys with that instance already promoted to SOLVED. The
 content lives between `<!-- BUILD:firstblood -->` markers — don't hand-edit inside.
 
-The scored "Beat rho" leaderboard numbers (`rho_ref = 984,377`; record
-**708,536 (0.72×)**, optimum 696,061 (0.71×), Shoup floor 555,375 (0.56×)) are
-still curated by hand in `index.html`. **Note:** the 708,536 record is not yet
-backed by a row in `results.tsv` (which currently bottoms out at 788,034 /
-0.80×) — see the repo summary for how to make the arena board data-driven too.
+## The scored "Beat rho" arena (also data-driven)
+
+`build.py` renders the hero stats, the "Beat rho" leaderboard, the trajectory
+chart, and the score-history table — all between `<!-- BUILD:arena-* -->` markers —
+from two inputs:
+
+- [`arena.json`](arena.json) — the tier group order `n`. The **reference rows**
+  (Shoup floor √(n/2), the negation-map optimum √(πn/4), the rho optimum √(πn/2),
+  and BSGS 2√n) are **computed exactly from `n`**, never hand-typed.
+- [`../results.tsv`](../results.tsv) — the measured benchmark runs. The **record**,
+  score history, and chart come straight from these rows; a new `./benchmark.sh`
+  row updates them automatically (the deploy triggers on `results.tsv`).
+
+So the headline reflects the best *committed* run. As of now that is **0.80×**
+(788,034); the faster ~0.72× solver lives in an open PR and isn't in `results.tsv`
+yet — merge it (its benchmark row promotes the record) or commit a `./benchmark.sh`
+run, and the board, chart, and hero stat all move on their own.
 
 ## Preview locally
 

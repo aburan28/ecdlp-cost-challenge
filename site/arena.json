@@ -1,0 +1,12 @@
+{
+  "_comment": "Parameters for the scored 'Beat rho' arena, rendered by site/build.py. The reference rows are mathematical constants computed exactly from n (the bits=40 official-tier group order) — never hand-typed. The record, score-history, and trajectory come from the measured runs in results.tsv (mean group-ops, lower is better). A new benchmark row in results.tsv updates the board, record, and chart automatically.",
+  "tier_bits": 40,
+  "n": 616882790773,
+  "results": "results.tsv",
+  "references": [
+    { "name": "Generic floor", "sub": "√(n/2) · Shoup bound on the expected score", "formula": "floor", "role": "floor" },
+    { "name": "Negation-map rho optimum", "sub": "√(πn/4) · best the √2 walk can do", "formula": "optimum", "role": "optimum", "rank": "★" },
+    { "name": "Pollard-rho optimum", "sub": "√(πn/2) · the reference, 1.00×", "formula": "rho", "role": "rho" },
+    { "name": "Baby-step giant-step", "sub": "deterministic, but needs √n memory", "formula": "bsgs", "role": "bsgs" }
+  ]
+}

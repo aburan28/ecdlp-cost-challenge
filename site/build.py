@@ -34,6 +34,7 @@ deploy runs build.py — the board promotes that instance to SOLVED automaticall
 """
 import html
 import json
+import math
 import re
 import sys
 from pathlib import Path
@@ -44,6 +45,8 @@ STATUS = FB / "status.json"
 SUBMISSIONS = ROOT / "submissions"
 INDEX = ROOT / "site" / "index.html"
 FB_README = FB / "README.md"
+ARENA = ROOT / "site" / "arena.json"
+RESULTS = ROOT / "results.tsv"
 
 
 def load_manifest():
@@ -188,10 +191,200 @@ def render_readme_table(instances, solved_by):
     return "\n".join(rows)
 
 
+# ---- scored "Beat rho" arena (site/arena.json + results.tsv) ---------------
+
+def arena_constants(n):
+    """The reference rows are exact functions of the group order n."""
+    return {
+        "rho": round(math.sqrt(math.pi * n / 2)),       # √(πn/2)  Pollard-rho optimum
+        "floor": round(math.sqrt(n / 2)),               # √(n/2)   Shoup expected floor
+        "optimum": round(math.sqrt(math.pi * n / 4)),   # √(πn/4)  negation-map optimum
+        "bsgs": round(2 * math.sqrt(n)),                # 2√n      baby-step giant-step
+    }
+
+
+def load_results(bits):
+    """Measured runs from results.tsv for this tier (correct only), oldest first."""
+    rows = []
+    if RESULTS.exists():
+        for line in RESULTS.read_text().splitlines():
+            if not line or line.startswith("timestamp"):
+                continue
+            f = line.split("\t")
+            if len(f) < 8:
+                continue
+            ts, commit, ops, b, _rho, ratio, correct, note = f[:8]
+            if not b.isdigit() or int(b) != bits or correct.strip() != "OK":
+                continue
+            rows.append({"ts": int(ts), "ops": int(ops), "note": note.strip()})
+    return rows
+
+
+def _short(note):
+    """A compact label for a measured run, derived from its results.tsv note."""
+    s = re.sub(r"\s*\([^)]*\)", "", note)          # drop "(8-trial mean)" etc.
+    s = re.split(r"\s+[—-]\s+", s)[0]               # keep text before " — " / " - "
+    if ": " in s:
+        s = s.split(": ", 1)[1]                     # drop a "baseline: " prefix
+    s = s.strip()
+    return (s[:26] + "…") if len(s) > 27 else s
+
+
+def _fmt(x):
+    return f"{x:,}"
+
+
+def _ratiostr(r):
+    return f"{r:.2f}×"
+
+
+_ROLE = {  # role -> (ratio css class, bar colour)
+    "floor": ("r-floor", "var(--cyan)"),
+    "optimum": ("r-good", "var(--accent-dim)"),
+    "rho": ("r-ref", "var(--muted)"),
+    "bsgs": ("r-bad", "var(--fail)"),
+    "measured": ("r-bad", "var(--fail)"),
+    "record": ("", "var(--gold)"),
+}
+
+
+def _arena_rows(arena, measured, consts):
+    """Unified, ops-sorted list of leaderboard rows (references + measured)."""
+    rho = consts["rho"]
+    rows = []
+    for ref in arena["references"]:
+        ops = consts[ref["formula"]]
+        rows.append({"name": ref["name"], "sub": ref["sub"], "ops": ops,
+                     "ratio": ops / rho, "role": ref["role"],
+                     "rank": ref.get("rank", "—"), "record": False})
+    best = min((m["ops"] for m in measured), default=None)
+    for m in measured:
+        rec = m["ops"] == best
+        rows.append({"name": _short(m["note"]), "sub": m["note"], "ops": m["ops"],
+                     "ratio": m["ops"] / rho, "role": "record" if rec else "measured",
+                     "rank": "1" if rec else "—", "record": rec})
+    rows.sort(key=lambda r: r["ops"])
+    return rows
+
+
+def render_arena_stats(measured, consts, bits):
+    rho = consts["rho"]
+    best = min((m["ops"] for m in measured), default=None)
+    rec = f"{best / rho:.2f}×" if best else "—"
+    opt = f"{consts['optimum'] / rho:.2f}×"
+    flr = f"{consts['floor'] / rho:.2f}×"
+    return (
+        f'      <div class="stat"><div class="v gold">{rec}</div><div class="k">current record · ÷ rho</div></div>\n'
+        f'      <div class="stat"><div class="v">{opt}</div><div class="k">negation-map optimum</div></div>\n'
+        f'      <div class="stat"><div class="v">{flr}</div><div class="k">generic floor √(n/2)</div></div>\n'
+        f'      <div class="stat"><div class="v">bits = {bits}</div><div class="k">official tier</div></div>'
+    )
+
+
+def render_beat_table(arena, measured, consts):
+    rows = _arena_rows(arena, measured, consts)
+    maxr = max((r["ratio"] for r in rows), default=1.0)
+    out = []
+    for r in rows:
+        cls, barcol = _ROLE[r["role"]]
+        rowcls = "lb-row best" if r["record"] else "lb-row"
+        tag = ' <span class="tag-best">RECORD</span>' if r["record"] else ""
+        ratio_cls = f" {cls}" if cls else ""
+        barw = round(r["ratio"] / maxr * 100)
+        out.append(
+            f'      <div class="{rowcls}">\n'
+            f'        <div class="rank mono">{html.escape(str(r["rank"]))}</div>\n'
+            f'        <div class="name">{html.escape(r["name"])}{tag}<small>{html.escape(r["sub"])}</small></div>\n'
+            f'        <div class="ops">{_fmt(r["ops"])}</div><div class="ratio{ratio_cls}">{_ratiostr(r["ratio"])}</div>\n'
+            f'        <div class="bar"><i style="width:{barw}%;background:{barcol}"></i></div>\n'
+            f"      </div>"
+        )
+    return "\n".join(out)
+
+
+def render_history_table(measured, consts):
+    rho = consts["rho"]
+    rows = sorted(measured, key=lambda m: m["ops"])
+    best = rows[0]["ops"] if rows else None
+    out = []
+    for i, m in enumerate(rows, 1):
+        rec = m["ops"] == best
+        rowcls = "lb-row best" if rec else "lb-row"
+        ratio = m["ops"] / rho
+        cls = "" if rec else " r-bad" if ratio > 1 else " r-ref"
+        tag = ' <span class="tag-best">BEST</span>' if rec else ""
+        out.append(
+            f'      <div class="{rowcls}">\n'
+            f'        <div class="rank mono">{i}</div>\n'
+            f'        <div class="name">{html.escape(_short(m["note"]))}{tag}<small>{html.escape(m["note"])}</small></div>\n'
+            f'        <div class="ops">{_fmt(m["ops"])}</div><div class="ratio{cls}">{_ratiostr(ratio)}</div>\n'
+            f"      </div>"
+        )
+    return "\n".join(out)
+
+
+def render_demo_score(measured, consts):
+    """The illustrative score in the 'How it works' terminal — kept in step with the record."""
+    best = min((m["ops"] for m in measured), default=None)
+    ops = best if best else consts["optimum"]
+    return (f'<span class="c-cost">{_fmt(ops)}</span> group ops   '
+            f'<span class="c-com">({_ratiostr(ops / consts["rho"])} rho)</span>')
+
+
+def _y(ratio):
+    """ratio -> svg y, the same [0.50,1.45]->[240,40] mapping the chart uses."""
+    r = max(0.50, min(1.45, ratio))
+    return round(240 - (r - 0.50) / 0.95 * 200, 1)
+
+
+def render_trajectory(measured, consts):
+    rho = consts["rho"]
+    pts = [{"ratio": m["ops"] / rho, "label": _short(m["note"])}
+           for m in sorted(measured, key=lambda m: -m["ops"])]  # worst -> best
+    n = len(pts)
+    xs = [320.0] if n == 1 else [round(120 + i * (400 / (n - 1)), 1) for i in range(n)]
+    for p, x in zip(pts, xs):
+        p["x"], p["y"] = x, _y(p["ratio"])
+    colours = ["#f87171", "#e7eaf0", "#f5b941"]
+
+    def col(i):
+        return colours[-1] if i == n - 1 else (colours[0] if i == 0 else colours[1])
+
+    L = []
+    # reference lines (computed)
+    for ratio, txt, stroke in [(1.0, "1.00× rho", "#97a1b2"),
+                               (consts["optimum"] / rho, "0.71× optimum", "#4ade80"),
+                               (consts["floor"] / rho, "0.56× floor", "#38bdf8")]:
+        y = _y(ratio)
+        fill = f' fill="{stroke}"' if stroke != "#97a1b2" else ""
+        L.append(f'        <line class="ref" x1="60" y1="{y}" x2="600" y2="{y}" stroke="{stroke}"/>')
+        L.append(f'        <text x="600" y="{y - 4:.1f}" text-anchor="end" font-size="11"{fill}>{txt}</text>')
+    # axes
+    L.append('        <line class="axis" x1="60" y1="40" x2="60" y2="248"/>')
+    L.append('        <line class="axis" x1="60" y1="248" x2="600" y2="248"/>')
+    # descent polyline + points
+    if pts:
+        L.append('        <polyline points="{}" fill="none" stroke="#f5b941" stroke-width="2.5"/>'
+                 .format(" ".join(f'{p["x"]},{p["y"]}' for p in pts)))
+        for i, p in enumerate(pts):
+            r = 6.5 if i == n - 1 else 5.5
+            L.append(f'        <circle cx="{p["x"]}" cy="{p["y"]}" r="{r}" fill="{col(i)}"/>')
+        for i, p in enumerate(pts):
+            ly = max(12.0, p["y"] - 12)
+            fill = f' fill="{col(i)}"' if i in (0, n - 1) else ' fill="#e7eaf0"'
+            L.append(f'        <text x="{p["x"]}" y="{ly:.1f}" text-anchor="middle" font-size="12"{fill}>{_ratiostr(p["ratio"])}</text>')
+            lblfill = ' fill="#f5b941"' if i == n - 1 else ""
+            L.append(f'        <text x="{p["x"]}" y="266" text-anchor="middle" font-size="10.5"{lblfill}>{html.escape(p["label"])}</text>')
+    return "\n".join(L)
+
+
 # ---- marker injection ------------------------------------------------------
 
-def inject(path, marker, new_inner):
-    """Replace text between `<!-- BUILD:marker ... -->` and `<!-- /BUILD:marker -->`."""
+def inject(path, marker, new_inner, inline=False):
+    """Replace text between `<!-- BUILD:marker ... -->` and `<!-- /BUILD:marker -->`.
+
+    inline=True keeps it on one line (no surrounding newlines) — needed inside a
+    <pre> block, where stray newlines would render as blank lines."""
     text = path.read_text()
     pat = re.compile(
         r"(<!--\s*BUILD:" + re.escape(marker) + r"\b[^>]*-->)(.*?)(<!--\s*/BUILD:"
@@ -204,7 +397,8 @@ def inject(path, marker, new_inner):
             f"!! marker BUILD:{marker} not found in {path.relative_to(ROOT)} — "
             "the file must contain the <!-- BUILD:{marker} --> / <!-- /BUILD:{marker} --> pair"
         )
-    updated = text[: m.start(2)] + "\n" + new_inner + "\n" + text[m.end(2):]
+    body = new_inner if inline else "\n" + new_inner + "\n"
+    updated = text[: m.start(2)] + body + text[m.end(2):]
     return text, updated
 
 
@@ -235,20 +429,32 @@ def main():
         print(f"verified · {len(verified)} submission(s) ok, {solved}/{total} instances solved (k·G == Q)")
         return 0
 
-    jobs = [
-        (INDEX, "firstblood", render_site_rows(instances, solved_by, repo, branch)),
+    # Scored "Beat rho" arena: reference rows are computed from n; the record,
+    # score history, and trajectory come from the measured runs in results.tsv.
+    arena = json.loads(ARENA.read_text())
+    consts = arena_constants(arena["n"])
+    measured = load_results(arena["tier_bits"])
+
+    jobs = [  # (path, marker, inner, inline)
+        (INDEX, "firstblood", render_site_rows(instances, solved_by, repo, branch), False),
         # blank lines around the table so GFM parses it as a table (an HTML
         # comment is an HTML block that a table must be separated from).
-        (FB_README, "firstblood-table", "\n" + render_readme_table(instances, solved_by) + "\n"),
+        (FB_README, "firstblood-table", "\n" + render_readme_table(instances, solved_by) + "\n", False),
+        (INDEX, "arena-stats", render_arena_stats(measured, consts, arena["tier_bits"]), False),
+        (INDEX, "arena-demo", render_demo_score(measured, consts), True),
+        (INDEX, "arena-beat", render_beat_table(arena, measured, consts), False),
+        (INDEX, "arena-trajectory", render_trajectory(measured, consts), False),
+        (INDEX, "arena-history", render_history_table(measured, consts), False),
     ]
 
-    stale = []
-    for path, marker, inner in jobs:
-        before, after = inject(path, marker, inner)
+    stale = set()
+    for path, marker, inner, inline in jobs:
+        before, after = inject(path, marker, inner, inline)
         if before != after:
-            stale.append(path.relative_to(ROOT))
+            stale.add(path.relative_to(ROOT))
             if not check:
                 path.write_text(after)
+    stale = sorted(stale)
 
     if check:
         if stale:
