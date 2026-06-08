@@ -163,6 +163,16 @@ sage tools/verify_instance.sage instance.public.json # independent Sage check
 python3 first_blood/verify_first_blood.py first_blood/instance_public_96.json <k>
 ```
 
+Or stop scoring a single instance and score your solver's **cost curve** — its
+exponent and constant `(α, c)` fit across a ladder of sizes and checked by held-out
+prediction. "Find `k`" is a point; "a faster algorithm" is a slope. See
+[`SCALING.md`](SCALING.md):
+
+```bash
+python3 tools/scaling_battery.py                                 # ladder + held-out fit -> scaling.json
+python3 tools/beats_curve.py --against scaling.baseline.json     # promote only if the curve wins
+```
+
 ---
 
 ## Scope & honesty (read this)
@@ -213,6 +223,8 @@ unforgeable group-operation score forces this oracle design.
 | `tools/verify_instance.sage` | tool | independent Sage check of an instance |
 | `tools/gen_instances.sage` | tool | larger verified-generic instances |
 | `first_blood/` | track | open representation-attack board + pure-Python verifier |
+| `SCALING.md`, `tools/scaling_battery.py` | track | **scaling track**: score the cost *curve* `(α,c)` across a ladder, held-out-verified |
+| `tools/beats_curve.py` | track | curve-comparison promotion gate (exponent, then constant) |
 
 ### Knobs
 
