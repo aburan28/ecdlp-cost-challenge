@@ -73,13 +73,20 @@ else
 fi
 
 # 4. Run the trusted oracle, which spawns the (wrapped) solver.
-#    - $ECDLP_SEED: official runs set a fresh secret seed; local dev uses the
-#      committed default baked into the oracle.
-#    - Token encoding is randomized per run by the oracle (do NOT pin it here).
-#    - $ECDLP_TRIALS: the official score is the MEAN over several trials, to tame
-#      rho's heavy single-run variance. Override to 1 for quick local iteration.
+#    FAIR & REPRODUCIBLE SCORING (see DESIGN.md §"Fair, reproducible scoring").
+#    rho's per-run cost is a high-variance random variable, so we do NOT resample
+#    it freshly each run — that would make the score luck, and re-rollable. Instead
+#    the trial battery is FIXED:
+#    - $ECDLP_TRIALS: a fixed count (default 32) — the score is the mean over the
+#      whole battery; it is NOT a knob to shrink-and-get-lucky.
+#    - the per-trial token encodings are a DETERMINISTIC function of $ECDLP_SEED
+#      (oracle default), so the same solver scores identically every run.
+#    Official grading fixes BOTH across all submissions (one per-round secret
+#    $ECDLP_SEED/$ECDLP_TOKEN_SEED + a large $ECDLP_TRIALS), so every solver is
+#    compared on identical instances (common random numbers ⇒ paired, fair), then
+#    the seeds are revealed for audit. Every results.tsv row records its seeds.
 export ECDLP_SOLVER_BIN="$SOLVER_BIN"
 export ECDLP_SOLVER_WRAP="$solver_wrap"
-export ECDLP_TRIALS="${ECDLP_TRIALS:-5}"
+export ECDLP_TRIALS="${ECDLP_TRIALS:-32}"
 
 "$ORACLE_BIN" "$@"

@@ -83,13 +83,19 @@ fn main() {
     // sizes (p,a,b,G,Q) is trivially breakable. Keep it until scoring is done.
     let public_descriptor = instance::public_json(&inst);
 
-    // Per-run-random token encoding unless explicitly pinned (tests).
+    // FAIR & REPRODUCIBLE TRIAL BATTERY (see DESIGN.md §"Fair, reproducible
+    // scoring"). The per-trial token encodings are a DETERMINISTIC function of the
+    // instance seed — NOT wall-clock — so the same solver scores identically on
+    // every run. Nothing to re-roll, no "faster on some runs": rho's collision
+    // time is a random variable, so we pin its randomness instead of resampling it.
+    // The official grader overrides ECDLP_TOKEN_SEED with ONE per-round secret
+    // value applied to EVERY submission (common random numbers ⇒ a paired,
+    // luck-cancelling comparison), then reveals it after grading for audit.
     let base_token_seed = env_u64("ECDLP_TOKEN_SEED").unwrap_or_else(|| {
-        let nanos = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .map(|d| d.as_nanos() as u64)
-            .unwrap_or(0);
-        nanos ^ ((std::process::id() as u64).wrapping_mul(0x9E37_79B9_7F4A_7C15))
+        let mut z = seed.wrapping_add(0x9E37_79B9_7F4A_7C15); // SplitMix64(instance seed)
+        z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
+        z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
+        z ^ (z >> 31)
     });
 
     let n = inst.n;
@@ -157,6 +163,9 @@ fn main() {
                 "    \"shoup_floor\": {floor},\n",
                 "    \"ratio_to_rho\": {ratio:.4},\n",
                 "    \"trials\": {trials},\n",
+                "    \"instance_seed\": {iseed},\n",
+                "    \"token_seed_base\": {tseed},\n",
+                "    \"reproducible\": true,\n",
                 "    \"correct\": true\n",
                 "  }}\n",
                 "}}\n"
@@ -169,6 +178,8 @@ fn main() {
             floor = shoup_floor,
             ratio = ratio,
             trials = trials,
+            iseed = seed,
+            tseed = base_token_seed,
         )
     } else {
         format!(
@@ -177,14 +188,17 @@ fn main() {
     };
     let _ = fs::write("score.json", &score_json);
 
-    // results.tsv (append-only).
-    let header = "timestamp\tcommit\tgroup_ops\tbits\trho_ref\tratio\tcorrect\tnote\n";
+    // results.tsv (append-only). Columns 9–11 (instance_seed/token_seed/trials)
+    // make every row reproducible: re-running with the same seeds + solver yields
+    // the same score, bit-for-bit. (Legacy 8-column rows still parse — readers
+    // take the first 8 fields.)
+    let header = "timestamp\tcommit\tgroup_ops\tbits\trho_ref\tratio\tcorrect\tnote\tinstance_seed\ttoken_seed\ttrials\n";
     let ts = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map(|d| d.as_secs())
         .unwrap_or(0);
     let row = format!(
-        "{ts}\t{commit}\t{ops}\t{bits}\t{rho}\t{ratio:.4}\t{ok}\t{note}\n",
+        "{ts}\t{commit}\t{ops}\t{bits}\t{rho}\t{ratio:.4}\t{ok}\t{note}\t{iseed}\t{tseed}\t{trials}\n",
         ts = ts,
         commit = git_commit(),
         ops = count,
@@ -193,6 +207,9 @@ fn main() {
         ratio = ratio,
         ok = if correct { "OK" } else { "FAIL" },
         note = note.replace('\t', " ").replace('\n', " "),
+        iseed = seed,
+        tseed = base_token_seed,
+        trials = trials,
     );
     if !std::path::Path::new("results.tsv").exists() {
         let _ = fs::write("results.tsv", header);
