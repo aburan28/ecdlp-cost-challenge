@@ -10,3 +10,6 @@ instance.secret.json
 # macOS junk (the volume writes AppleDouble forks).
 ._*
 .DS_Store
+# Python bytecode (site/build.py imports first_blood/verify_first_blood.py).
+__pycache__/
+*.pyc

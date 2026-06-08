@@ -169,6 +169,12 @@
   .fb-row .file{font-family:var(--mono);font-size:13.5px}
   .open{color:var(--accent);font-family:var(--mono);font-size:13.5px}
   .open::before{content:"●  ";color:var(--accent)}
+  .solved{color:var(--fail);font-family:var(--mono);font-size:13.5px}
+  .solved::before{content:"●  ";color:var(--fail)}
+  .fb-row .who{color:var(--muted)}
+  .fb-row .who b{color:var(--text)}
+  .fb-row .who a{color:var(--accent);text-decoration:none;white-space:nowrap}
+  .fb-row .who a:hover{text-decoration:underline}
 
   /* scope */
   .scopegrid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:30px}
@@ -423,6 +429,8 @@
     </div>
 
     <div class="note" style="margin-top:28px">Where to push next: tune the distinguished-point rate <b>θ</b> and walk count <b>W</b> toward the 0.71× optimum, build a better r-adding walk (<b>Teske</b>), or try <b>Gaudry–Schost</b> — all constant-factor moves above the <span class="mono">√(n/2)</span> floor. The shipped solver already ships a negation-map distinguished-point rho; beat it.</div>
+
+    <div class="note" style="margin-top:18px"><b>How submissions are trusted.</b> You submit a solver as a pull request; CI rebuilds the trusted harness, runs your solver <b>sandboxed</b> (no network, no filesystem writes), and confirms it recovers a valid <span class="mono">k</span> — any <span class="mono">score.json</span> you commit is ignored, and a guard rejects edits outside <span class="mono">src/solver/</span>. That public check is a <b>correctness gate</b>; the official <span class="mono">bits = 40</span> ranking is run by maintainers against a <b>sealed seed</b>, since a fork-readable workflow can't hold the secret.</div>
   </div>
 </section>
 
@@ -435,12 +443,14 @@
 
     <div class="lb">
       <div class="fb-row fb-head"><div>Instance</div><div>Field</div><div>Status</div><div class="who">First solver</div></div>
-      <div class="fb-row"><div class="file">instance_public_80.json</div><div class="mono">80-bit</div><div class="open">OPEN</div><div class="who muted">—</div></div>
+      <!-- BUILD:firstblood (generated from first_blood/status.json by site/build.py — do not edit by hand) -->
+      <div class="fb-row"><div class="file">instance_public_80.json</div><div class="mono">80-bit</div><div class="solved">SOLVED</div><div class="who"><b>aburan28</b> — generic parallel-DP rho, 12 cores, ~36 min · <a href="https://github.com/aburan28/ecdlp-cost-challenge/blob/main/submissions/first-blood-80/WRITEUP.md" target="_blank" rel="noopener">writeup ↗</a></div></div>
       <div class="fb-row"><div class="file">instance_public_96.json</div><div class="mono">96-bit</div><div class="open">OPEN</div><div class="who muted">—</div></div>
       <div class="fb-row"><div class="file">instance_public_112.json</div><div class="mono">112-bit</div><div class="open">OPEN</div><div class="who muted">—</div></div>
       <div class="fb-row"><div class="file">instance_public_128.json</div><div class="mono">128-bit</div><div class="open">OPEN</div><div class="who muted">—</div></div>
+<!-- /BUILD:firstblood -->
     </div>
-    <div class="note" style="margin-top:22px">A genuine sub-<span class="mono">√n</span> attack on a generic prime-field curve would be a major result. The generic floor in the arena is <b>not</b> evidence that no such attack exists — this board exists so that, if one does, it has somewhere to land. Verification is one scalar multiplication: <code style="font-family:var(--mono)">python3 verify_first_blood.py instance_public_96.json &lt;k&gt;</code>.</div>
+    <div class="note" style="margin-top:22px">A genuine sub-<span class="mono">√n</span> attack on a generic prime-field curve would be a major result. The generic floor in the arena is <b>not</b> evidence that no such attack exists — this board exists so that, if one does, it has somewhere to land. Verification is one scalar multiplication: <code style="font-family:var(--mono)">python3 verify_first_blood.py instance_public_96.json &lt;k&gt;</code> — and every claimed solve is re-checked in CI (<span class="mono">k·G == Q</span>) before it can appear on this board, so a listing here is always a real, re-verifiable break.</div>
   </div>
 </section>
 

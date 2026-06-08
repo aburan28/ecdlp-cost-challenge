@@ -136,3 +136,16 @@ jobs:
             echo '```'
             echo "_Score is a small-tier correctness gate, not the official ranking._"
           } >> "$GITHUB_STEP_SUMMARY"
+
+  firstblood:
+    name: first-blood proofs
+    runs-on: ubuntu-latest
+    # No untrusted code runs here — it's a pure scalar-mult re-check of every
+    # claimed solve in first_blood/status.json. A PR (or a push to main) that
+    # marks an instance "solved" with a missing or wrong k fails this check, so
+    # the board can never show SOLVED without a real, re-verifiable break. Mark
+    # this a REQUIRED status check on main for it to actually block a merge.
+    steps:
+      - uses: actions/checkout@v4
+      - name: verify every claimed solve (k·G == Q)
+        run: python3 site/build.py --verify
