@@ -7,6 +7,9 @@ instance.secret.json
 # scaling.baseline.json; a run writes its candidate to scaling.json, which is
 # gated against the baseline by tools/beats_curve.py and only promoted on a win.
 /scaling.json
+# Representation-track candidate output (transient). The committed reference is
+# repr_scaling.baseline.json; a run writes repr_scaling.json (repr_track/repr_meter.py).
+/repr_scaling.json
 # Sage preparsed artifacts and stray research-track outputs at the repo root
 # (the curated first_blood/instance_public_*.json ARE committed).
 *.sage.py
