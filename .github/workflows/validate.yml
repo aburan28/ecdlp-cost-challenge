@@ -59,7 +59,14 @@ jobs:
         run: |
           set -euo pipefail
           echo "labels: [${LABELS}]"
-          mapfile -t changed < <(git diff --name-only "${BASE_SHA}" "${HEAD_SHA}")
+          # Diff against the MERGE BASE, not the base tip. `git diff A B` (two-dot)
+          # reports every difference between the two trees — including commits that
+          # landed on `main` AFTER this PR branched off — which falsely attributes
+          # harness changes to the submission. The merge base gives exactly the
+          # files this PR itself changed (equivalent to `git diff A...B`).
+          MERGE_BASE="$(git merge-base "${BASE_SHA}" "${HEAD_SHA}")"
+          echo "base=${BASE_SHA} head=${HEAD_SHA} merge-base=${MERGE_BASE}"
+          mapfile -t changed < <(git diff --name-only "${MERGE_BASE}" "${HEAD_SHA}")
           echo "changed files:"; printf '  %s\n' "${changed[@]:-<none>}"
           violations=()
           for f in "${changed[@]:-}"; do
@@ -77,6 +84,8 @@ jobs:
             else
               echo "::error::A submission may only modify src/solver/. The trusted meter/oracle/verifier must stay immutable. Offending files:"
               printf '  %s\n' "${violations[@]}"
+              echo "Note: score.json and results.tsv are benchmark OUTPUTS — do not commit them;"
+              echo "CI re-derives the score from the trusted harness. Drop them from your PR."
               echo "If this is an intentional harness/infra change, a maintainer should add the 'harness' label."
               exit 1
             fi

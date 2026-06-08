@@ -30,7 +30,12 @@ label to bypass it.)
    ```
 
    For fast iteration: `ECDLP_TRIALS=1 ECDLP_BITS=28 ./benchmark.sh`.
-4. Open a PR. Describe the approach in the PR body (what idea, expected speedup,
+4. Commit **only** your `src/solver/` changes. `./benchmark.sh` overwrites
+   `score.json` and appends a row to `results.tsv`, but those are harness
+   **outputs** — do **not** commit them (`git checkout -- score.json results.tsv`
+   to drop them). The guard rejects any PR that touches them, and CI re-derives
+   the score from the trusted harness regardless.
+5. Open a PR. Describe the approach in the PR body (what idea, expected speedup,
    any caveats).
 
 ## How it's scored
