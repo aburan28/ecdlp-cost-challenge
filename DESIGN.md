@@ -117,6 +117,42 @@ action:` for a hardened deployment, run oracle and solver in separate containers
   it is not a generic-group computation. Per the lab constitution: the generic
   floor here is *not* evidence that no such attack exists.
 
+## 4½. Fair, reproducible scoring (common random numbers)
+
+`PROBLEM.` rho's cost is a **random variable** with heavy variance (CV ≈ 33% per
+trial; a single run swings ~0.5×–2× the mean). If each run drew *fresh* randomness,
+the same solver would score differently every time, and a contestant could simply
+**re-roll** — run repeatedly, or shrink the trial count — and submit the luckiest
+draw. That measures luck, not the algorithm: not fair, not consistent.
+
+`DESIGN DECISION (common random numbers).` We do not resample rho's randomness; we
+**pin** it into a fixed trial battery, so the score is a deterministic function of
+the solver:
+
+- **Deterministic encodings.** The per-trial token encodings are a deterministic
+  function of the instance seed (`token_seed_t = SplitMix64(ECDLP_SEED) ⊕ t·φ`), not
+  wall-clock. So the same solver scores **identically on every run** — verified
+  bit-for-bit. (Solvers must likewise be deterministic — seed any internal PRNG from
+  the public instance data, as the shipped one does; it reads `c.n`.)
+- **Fixed trial count.** `ECDLP_TRIALS` is a *fixed* battery size, not a knob to
+  shrink for a lucky small-sample mean. The score is the mean over the whole battery.
+- **Recorded for audit.** Every `score.json` and `results.tsv` row records its
+  `instance_seed`, `token_seed`, and `trials`, so any number is reproducible by
+  re-running — the leaderboard is checkable, not self-reported on faith.
+
+`OFFICIAL GRADING.` One per-round **secret** `(ECDLP_SEED, ECDLP_TOKEN_SEED)` and a
+large fixed `ECDLP_TRIALS` are applied to **every** submission, then revealed after
+grading. Because all solvers face the *identical* battery, the comparison is a
+**paired / common-random-numbers** comparison: the instance-luck cancels, so the
+*difference* between two solvers has far lower variance than two independent runs —
+a genuinely better algorithm wins reliably even at moderate `N`. Secrecy preserves
+the anti-precompute property (§2–3); reveal-after-grading preserves reproducibility.
+
+`CONSEQUENCE.` "Faster on some runs" cannot happen: a solver's score is fixed.
+The remaining variance is only *across grading rounds* (different secret seeds),
+which moves the absolute number a little but not the ranking — and a large `N`
+keeps even the absolute number close to the true expected `√(πn/4)`.
+
 ## 5. Why generic curves, and why "generic" is enforced
 
 `HEURISTIC.` For a curve with no special structure (prime order, non-anomalous,
