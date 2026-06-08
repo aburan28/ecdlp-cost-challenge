@@ -89,4 +89,21 @@ export ECDLP_SOLVER_BIN="$SOLVER_BIN"
 export ECDLP_SOLVER_WRAP="$solver_wrap"
 export ECDLP_TRIALS="${ECDLP_TRIALS:-32}"
 
+# Run the trusted oracle (writes score.json + appends a results.tsv row).
+set +e
 "$ORACLE_BIN" "$@"
+oracle_rc=$?
+set -e
+
+# Monotonic "beats-best" gate (informational; see tools/beats_best.py). Compares
+# this run's score.json against the committed frontier (results.tsv at HEAD, which
+# excludes the row just appended), so you see immediately whether it would be
+# promoted — ACCEPT (new record) or REJECT (doesn't beat the best). Non-fatal: the
+# benchmark's own pass/fail stays the oracle's exit code, preserved below.
+if [[ -f score.json ]] && command -v python3 >/dev/null 2>&1; then
+  git -C "$REPO" show HEAD:results.tsv > "$scratch/frontier.tsv" 2>/dev/null || : > "$scratch/frontier.tsv"
+  echo
+  python3 "$REPO/tools/beats_best.py" --score "$REPO/score.json" --against "$scratch/frontier.tsv" || true
+fi
+
+exit $oracle_rc
