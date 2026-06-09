@@ -1,0 +1,83 @@
+{
+  "track": "preprocessing-online-dlp",
+  "curve_class": "verified-generic prime order",
+  "model": "amortized / multi-target (one-time precomputed DP table); total P+T still \u2265\u221an",
+  "target_alpha": 0.3,
+  "seed": 703696,
+  "ladder_bits": [
+    20,
+    22,
+    24,
+    26
+  ],
+  "holdout_bits": 28,
+  "rungs": [
+    {
+      "bits": 20,
+      "n": 676981,
+      "field_ops": 111.25,
+      "precompute_ops": 48245,
+      "W": 12062
+    },
+    {
+      "bits": 22,
+      "n": 3774101,
+      "field_ops": 158.58333333333334,
+      "precompute_ops": 160629,
+      "W": 40158
+    },
+    {
+      "bits": 24,
+      "n": 9606697,
+      "field_ops": 242.58333333333334,
+      "precompute_ops": 308929,
+      "W": 77233
+    },
+    {
+      "bits": 26,
+      "n": 36026687,
+      "field_ops": 329.1666666666667,
+      "precompute_ops": 779285,
+      "W": 194822
+    },
+    {
+      "bits": 28,
+      "n": 226213157,
+      "field_ops": 652.5,
+      "precompute_ops": 2819825,
+      "W": 704957
+    }
+  ],
+  "online_alpha": 0.2817,
+  "online_alpha_ci95": [
+    0.2237,
+    0.3419
+  ],
+  "online_r2": 0.9784,
+  "precompute_alpha": 0.7,
+  "PT_alpha": 0.9817,
+  "holdout": {
+    "bits": 28,
+    "n": 226213157,
+    "measured_ops": 652.5,
+    "predicted_ops": 555,
+    "pi95": [
+      416,
+      739
+    ],
+    "sd_param_log": 0.1198,
+    "sd_meas_log": 0.08405,
+    "z": 1.111,
+    "pass": true
+  },
+  "b2_online_vs_rho": {
+    "beta_online": 0.341,
+    "beta_rho": 0.5037,
+    "exponent_gap": -0.1627,
+    "gap_ci95": [
+      -0.3708,
+      0.0594
+    ]
+  },
+  "verdict": "VERIFIED-FASTER-b1"
+}
