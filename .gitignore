@@ -16,6 +16,9 @@ instance.secret.json
 # Preprocessing-DLP candidate output (transient). Committed reference is
 # preprocessing_validation.baseline.json (repr_track/validate_preprocessing.py).
 /preprocessing_validation.json
+# Amortized-batch candidate output (transient). Committed reference is
+# amortized_validation.baseline.json (repr_track/validate_amortized.py).
+/amortized_validation.json
 # Sage preparsed artifacts and stray research-track outputs at the repo root
 # (the curated first_blood/instance_public_*.json ARE committed).
 *.sage.py
