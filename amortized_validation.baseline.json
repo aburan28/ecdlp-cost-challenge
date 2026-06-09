@@ -1,0 +1,100 @@
+{
+  "track": "amortized-batch-dlp",
+  "curve_class": "verified-generic prime order",
+  "model": "amortized over a batch of L targets sharing G; cost charged INCLUDES precompute/L. Total \u2265\u221an.",
+  "target_alpha": 0.33,
+  "seed": 782064,
+  "ladder_bits": [
+    20,
+    22,
+    24,
+    26
+  ],
+  "holdout_bits": 28,
+  "rungs": [
+    {
+      "bits": 20,
+      "n": 613507,
+      "W": 7548,
+      "L": 93,
+      "precompute_ops": 30189,
+      "online_mean": 159.3,
+      "field_ops": 483.9129032258065
+    },
+    {
+      "bits": 22,
+      "n": 3144971,
+      "W": 22563,
+      "L": 162,
+      "precompute_ops": 90249,
+      "online_mean": 270,
+      "field_ops": 827.0925925925926
+    },
+    {
+      "bits": 24,
+      "n": 12950867,
+      "W": 58243,
+      "L": 262,
+      "precompute_ops": 232969,
+      "online_mean": 433.3,
+      "field_ops": 1322.4946564885497
+    },
+    {
+      "bits": 26,
+      "n": 34095283,
+      "W": 111405,
+      "L": 364,
+      "precompute_ops": 445617,
+      "online_mean": 626.8,
+      "field_ops": 1851.0225274725274
+    },
+    {
+      "bits": 28,
+      "n": 179990539,
+      "W": 339639,
+      "L": 641,
+      "precompute_ops": 1358553,
+      "online_mean": 1083.8,
+      "field_ops": 3203.227457098284
+    }
+  ],
+  "amortized_alpha": 0.3333,
+  "amortized_alpha_ci95": [
+    0.3131,
+    0.3533
+  ],
+  "r2": 0.9999,
+  "holdout": {
+    "bits": 28,
+    "n": 179990539,
+    "measured_ops": 3203.227457098284,
+    "predicted_ops": 3193,
+    "pi95": [
+      2898,
+      3517
+    ],
+    "sd_param_log": 0.03941,
+    "sd_meas_log": 0.02968,
+    "z": 0.067,
+    "pass": true
+  },
+  "b2_amortized_vs_rho": {
+    "beta_online": 0.3109,
+    "beta_rho": 0.4397,
+    "exponent_gap": -0.1288,
+    "gap_ci95": [
+      -0.3246,
+      0.1041
+    ],
+    "ratios": [
+      0.1246,
+      0.0866,
+      0.0665,
+      0.0488,
+      0.0674
+    ],
+    "median_speedup": 14.83,
+    "decisive": true
+  },
+  "verdict": "VERIFIED-FASTER"
+}
