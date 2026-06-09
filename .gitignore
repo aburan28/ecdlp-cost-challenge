@@ -13,6 +13,9 @@ instance.secret.json
 # Meter-validation candidate output (transient). Committed reference is
 # repr_validation.baseline.json; a run writes repr_validation.json (validate_meter.py).
 /repr_validation.json
+# Preprocessing-DLP candidate output (transient). Committed reference is
+# preprocessing_validation.baseline.json (repr_track/validate_preprocessing.py).
+/preprocessing_validation.json
 # Sage preparsed artifacts and stray research-track outputs at the repo root
 # (the curated first_blood/instance_public_*.json ARE committed).
 *.sage.py
