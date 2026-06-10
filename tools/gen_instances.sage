@@ -4,10 +4,12 @@
 # pairing structure checks and don't intend to run rho.
 #
 # Usage:  sage tools/gen_instances.sage <bits> [seed]
-# Writes: instance_public_<bits>.json   (public params only; k is discarded, so
-#         nobody — including the generator — knows the discrete log: a genuine
-#         challenge, self-verified by Q = k*G.)
-import json, sys
+# Writes: instance_public_<bits>.json   (public params only; k is drawn from system
+#         entropy — NOT the published seed — and discarded, so nobody, including the
+#         generator, knows the discrete log: a genuine challenge, self-verified by
+#         Q = k*G. The seed determines only the curve, so anyone can re-derive it and
+#         audit that the curve is good_curve's honest output, not hand-picked.)
+import json, os, sys
 
 bits = int(sys.argv[1]) if len(sys.argv) > 1 else 96
 seed = int(sys.argv[2]) if len(sys.argv) > 2 else 1
@@ -48,9 +50,24 @@ E, p, a, b, n = good_curve(bits)
 G = E.gens()[0] if E.gens() else E.random_point()
 while G.order() != n:
     G = E.random_point()
-k = randint(1, n - 1)
+# SECURITY — the secret scalar must NOT come from the seeded PRNG.
+# set_random_seed(seed) makes the ENTIRE Sage random stream a deterministic
+# function of `seed`, which is published below. Curve params may safely be
+# seed-derived (reproducibility lets anyone audit the curve is good_curve's honest
+# output, not a hand-picked weak one) — but a seed-derived k is equivalent to
+# PUBLISHING k: re-running this script with the same seed recomputes it. So draw k
+# from system entropy (os.urandom), independent of `seed`, and discard it.
+def secret_scalar(n):
+    nbits = int(n - 1).bit_length()
+    nbytes = (nbits + 7) // 8
+    while True:
+        x = int.from_bytes(os.urandom(nbytes), "big") & ((1 << nbits) - 1)
+        if 1 <= x <= n - 1:
+            return x  # uniform in [1, n-1], unpredictable, never stored
+
+k = secret_scalar(n)
 Q = k * G
-# k is intentionally NOT stored.
+del k  # genuinely discarded — independent of the public seed, nobody can recompute it
 
 out = {
     "name": "generic-prime-field-ecdlp",
@@ -61,8 +78,10 @@ out = {
     "Gx": int(G[0]), "Gy": int(G[1]),
     "Qx": int(Q[0]), "Qy": int(Q[1]),
     "j_invariant": int(E.j_invariant()),
-    "note": "Research-track instance. k is unknown (discarded at generation). "
-            "Recover k from these params by ANY method; verify via k*G == Q. "
+    "note": "Research-track instance. k was drawn from system entropy (os.urandom), "
+            "independent of the published seed (which determines only the auditable "
+            "curve), and immediately discarded — nobody, including the generator, "
+            "knows it. Recover k from these params by ANY method; verify via k*G == Q. "
             "Not scored on the oracle counter (not a generic-group computation).",
 }
 fn = f"instance_public_{p.nbits()}.json"
