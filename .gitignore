@@ -19,6 +19,9 @@ instance.secret.json
 # Amortized-batch candidate output (transient). Committed reference is
 # amortized_validation.baseline.json (repr_track/validate_amortized.py).
 /amortized_validation.json
+# Index-calculus probe candidate output (transient). Committed reference is
+# index_calculus_probe.baseline.json (repr_track/validate_index_calculus.py).
+/index_calculus_probe.json
 # Sage preparsed artifacts and stray research-track outputs at the repo root
 # (the curated first_blood/instance_public_*.json ARE committed).
 *.sage.py
