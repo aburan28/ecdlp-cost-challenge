@@ -1,0 +1,37 @@
+# Copy this directory to submissions/research-<name>/ and fill in the fields.
+
+[submission]
+name = "example-semaev-decomposition"
+solver = "your-github-handle"
+track = "representation" # one of: generic, scaling, representation
+algorithm_family = "summation-polynomial-index-calculus"
+date = "2026-06-10"
+
+[capabilities]
+uses_rho = false
+uses_bsgs = false
+uses_distinguished_points = false
+uses_negation_map = false
+uses_representation = true
+uses_oracle_tokens_only = false
+
+[claim]
+# The claimed asymptotic law. Leave unknown values as NaN in results.json if this
+# is an exploratory/partial submission rather than a solve.
+expected_alpha = 0.50
+expected_memory_alpha = 0.00
+mechanism = "Describe the concrete structure being exploited."
+falsifier = "Describe the result that would convince you this mechanism is not working."
+
+[validation]
+train_bits = [28, 32, 36, 40]
+holdout_bits = [44, 48]
+trials = 8
+seeds = 5
+rho_baseline = "same-hardware negation-map rho"
+
+[artifacts]
+claim = "CLAIM.md"
+writeup = "WRITEUP.md"
+results = "results.json"
+scaling = "scaling.json"
