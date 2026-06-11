@@ -1,0 +1,26 @@
+{
+  "submission": "example-semaev-decomposition",
+  "solver": "your-github-handle",
+  "track": "representation",
+  "correct": null,
+  "instance": null,
+  "k": null,
+  "classification": "OBSERVATION",
+  "costs": {
+    "group_adds": null,
+    "scalar_muls": null,
+    "field_adds": null,
+    "field_muls": null,
+    "field_invs": null,
+    "memory_bytes_peak": null,
+    "precompute_bytes": null,
+    "wall_time_ms": null
+  },
+  "baseline": {
+    "name": "same-hardware negation-map rho",
+    "group_ops": null,
+    "wall_time_ms": null
+  },
+  "speedup_vs_baseline": null,
+  "notes": "Use null for unmeasured values. Do not omit fields just because the result is partial."
+}
