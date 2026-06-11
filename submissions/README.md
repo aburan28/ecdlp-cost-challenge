@@ -1,6 +1,6 @@
 # Submissions
 
-Two kinds of contribution land here, both as **pull requests** that CI validates.
+Three kinds of contribution land here, each validated by CI or a local checker.
 
 ## First-Blood solves (recover `k` for a published curve)
 
@@ -44,3 +44,44 @@ allows, so it needs no maintainer label — just a passing check and a merge.
 A better generic solver is a different track: edit **only `src/solver/mod.rs`** and
 open a PR; CI re-derives the score in a sandbox. See
 [`CONTRIBUTING.md`](../CONTRIBUTING.md). Notes/writeups for those may also live here.
+
+## Research-track submissions (develop a mechanism)
+
+Use this when the goal is not merely another rho constant-factor tweak, but a
+mechanism-backed algorithmic claim.
+
+Copy the template:
+
+```bash
+cp -R submissions/research-template submissions/research-<name>
+```
+
+Fill in:
+
+```text
+submissions/research-<name>/
+  submission.toml   # declared track, capabilities, mechanism, validation plan
+  CLAIM.md          # falsifiable mechanism claim and result class
+  results.json      # measured costs, baseline, and correctness fields
+  scaling.json      # optional but required for sub-sqrt claims
+  WRITEUP.md        # detailed method and reproduction notes
+```
+
+Then run the structural checker:
+
+```bash
+python3 tools/classify_research_submission.py submissions/research-<name>
+```
+
+The checker separates these result classes:
+
+| Class | Meaning |
+|---|---|
+| `rho_constant` | Rho-family constant-factor improvement. |
+| `generic_collision` | Representation-blind collision search that is not necessarily the shipped rho implementation. |
+| `representation_constant` | Uses curve representation, but scaling is still compatible with `alpha = 0.5`. |
+| `representation_subsqrt_candidate` | Uses curve representation and has held-out-verified `alpha` upper 95% below `0.5`. |
+| `failed_or_overfit` | Wrong result, failed held-out prediction, missing mechanism, or unsupported claim. |
+
+The rule of thumb is: a solved instance is a point; a new algorithm is a predictive
+cost law plus a mechanism.
